@@ -1,22 +1,59 @@
-version: '3.8'
-
 services:
-  # Database for User Service (Relational)
+  # MySQL Database
   user-db:
     image: mysql:8.0
+    container_name: user-db
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: user_db
     ports:
       - "3307:3306"
 
-  # Database for Team & Task Services (NoSQL)
-  mongo-db:
-    image: mongo:latest
+  # MongoDB Database
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    restart: always
     ports:
       - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
 
-volumes:
-  mongo-data:
+  # User Service
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-db
+    environment:
+      - DB_HOST=user-db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASS=rootpassword
+      - DB_NAME=user_db
+      - JWT_SECRET=my_super_secret_key_123
+
+  # Team Service
+  team-service:
+    build: ./team-service
+    container_name: team-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/team_db
+      - JWT_SECRET=my_super_secret_key_123
+
+  # Task Service
+  task-service:
+    build: ./task-service
+    container_name: task-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/task_db
+      - JWT_SECRET=my_super_secret_key_123
