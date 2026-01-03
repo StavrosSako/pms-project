@@ -1,17 +1,20 @@
 import React from 'react';
 import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
-import { supabase } from '../supabaseClient';
 
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate(); 
 
+  // Inside Sidebar.jsx
   const handleLogout = async () => {
-    await supabase.auth.signOut(); //clearing the session from the supabase
+    // 1. Clear the JWT from localStorage (our new microservice auth method)
+    localStorage.removeItem('pms_token'); 
+    
+    // 2. Redirect the user back to the login page (root path)
     navigate('/'); 
-  }
+  };
 
   const menuItems = [
     { path: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Overview" }, 

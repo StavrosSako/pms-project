@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
+import Signup from './pages/Signup'; // Add this import
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Team from './pages/Team';
@@ -9,10 +10,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   return (
     <Routes>
-      {/* Public Route */}
+      {/* Public Routes */}
       <Route path="/" element={<Login />} />
+      <Route path="/signup" element={<Signup />} /> {/* Path to your register page */}
 
-      {/* Protected Routes (Wrapped by the Bouncer) */}
+      {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
