@@ -1,0 +1,54 @@
+import React from 'react';
+import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from 'lucide-react'; // Install lucide-react if needed, or use SVGs
+// If you don't have lucide-react installed yet, run: npm install lucide-react
+
+export default function Sidebar() {
+  const menuItems = [
+    { icon: <LayoutDashboard size={20} />, label: "Overview", active: true },
+    { icon: <FolderKanban size={20} />, label: "Projects", active: false },
+    { icon: <Users size={20} />, label: "Team", active: false },
+    { icon: <Settings size={20} />, label: "Settings", active: false },
+  ];
+
+  return (
+    <aside className="w-full h-full flex flex-col border-r transition-all duration-300 ... (keep the rest)">
+      
+      {/* Logo Area */}
+      <div className="h-20 flex items-center px-8 border-b border-gray-200/50 dark:border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+            O
+          </div>
+          <span className="font-bold text-xl tracking-tight text-gray-800 dark:text-white">
+            TUC <span className="text-primary font-normal">Orbit</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Menu */}
+      <nav className="flex-1 px-4 py-6 space-y-2">
+        {menuItems.map((item, index) => (
+          <button
+            key={index}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+              ${item.active 
+                ? 'bg-primary/10 text-primary font-medium dark:bg-primary/20 dark:text-white' 
+                : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* User / Logout */}
+      <div className="p-4 border-t border-gray-200/50 dark:border-white/5">
+        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+          <LogOut size={20} />
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
+  );
+}

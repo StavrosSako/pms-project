@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 1. FORCE THE BROWSER TO STOP SCROLLING */
+html, body {
+  height: 100%;
+  overflow: hidden; /* Stops the window from scrolling */
+  overscroll-behavior: none; /* Stops the "bounce" effect on Mac */
+}
+
+/* 2. Set the default background to match your theme (prevents white flashes) */
+:root {
+  background-color: #e4e7e4;
+}
+:root.dark {
+  background-color: #0f172a;
+}
