@@ -11,12 +11,12 @@ export default function Login() {
         <ThemeToggle />
       </div>
 
-      {/* 2. BACKGROUND BLOBS (The Glow) */}
-      {/* Light Mode Blobs (Mint/Peach) */}
+      {/* 2. BACKGROUND BLOBS */}
+      {/* Light Mode Blobs */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blob1 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float dark:hidden"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blob2 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float-delayed dark:hidden"></div>
       
-      {/* Dark Mode Blobs (Deep Green/Orange from image) */}
+      {/* Dark Mode Blobs */}
       <div className="hidden dark:block absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-dark-glowGreen rounded-full filter blur-[100px] opacity-60 animate-float"></div>
       <div className="hidden dark:block absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-dark-glowOrange rounded-full filter blur-[100px] opacity-60 animate-float-delayed"></div>
 

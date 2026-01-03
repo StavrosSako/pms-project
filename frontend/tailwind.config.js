@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // LIGHT THEME (Keep your existing mint colors)
+        // LIGHT THEME 
         background: "#e3e5cbff", 
         surface: "#ffffff",
         primary: "#4a5d4f",    
@@ -16,21 +16,21 @@ export default {
         blob1: "#bbf7d0",      
         blob2: "#fdba74",      
 
-        // DARK THEME (Extracted from your image)
+        // DARK THEME 
         dark: {
-          bg: "#18181b",         // Zinc-900 (Deep background)
-          card: "rgba(30, 41, 59, 0.7)", // Semi-transparent slate
-          input: "#0f172a",      // Very dark slate (for input fields)
-          text: "#f8fafc",       // White text
-          muted: "#94a3b8",      // Grey text
+          bg: "#18181b",         
+          card: "rgba(30, 41, 59, 0.7)", 
+          input: "#0f172a",      
+          text: "#f8fafc",       
+          muted: "#94a3b8",      
           
           // The Glow Colors
-          glowGreen: "#14532d",  // Deep Forest Green (Left blob)
-          glowOrange: "#7c2d12", // Deep Burnt Orange (Right blob)
+          glowGreen: "#14532d",  
+          glowOrange: "#7c2d12", 
           
           // The Button Gradient
-          btnStart: "#3f6212",   // Mossy Green
-          btnEnd: "#ca8a04",     // Earthy Gold
+          btnStart: "#3f6212",   
+          btnEnd: "#ca8a04",     
         },
 
         text: {
@@ -53,11 +53,8 @@ export default {
         
       },
       backgroundImage: {
-        // Light: Soft subtle gradient
         'orbit-light': 'linear-gradient(to bottom right, #e4e7e4, #f5f7f5)',
         
-        // Dark: The "Orbit" Deep Radial Gradient
-        // Starts dark slate, fades to deep black at edges
         'orbit-dark': 'radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 40%, #020617 100%)',
       },
     },

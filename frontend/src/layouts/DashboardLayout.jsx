@@ -5,19 +5,17 @@ import { Search, Bell } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
   return (
-    // 1. OUTER CONTAINER: Fixed height (h-screen), No Window Scroll (overflow-hidden)
+    //  OUTER CONTAINER: Fixed height (h-screen), No Window Scroll (overflow-hidden)
     <div className="h-screen w-full overflow-hidden flex transition-colors duration-500 
       bg-orbit-light dark:bg-orbit-dark 
       bg-cover bg-fixed bg-no-repeat
       text-text-main dark:text-dark-text">
       
-      {/* 2. SIDEBAR: Fixed width, full height */}
-      {/* We remove 'fixed' because flexbox handles the placement now */}
       <div className="w-64 h-full flex-shrink-0">
         <Sidebar />
       </div>
 
-      {/* 3. MAIN CONTENT AREA: Takes remaining width */}
+      {/*  MAIN CONTENT AREA: Takes remaining width */}
       <div className="flex-1 flex flex-col h-full relative">
         
         {/* HEADER: Stays at the top */}
@@ -45,7 +43,7 @@ export default function DashboardLayout({ children }) {
             <ThemeToggle />
             <div className="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-white/10">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-semibold dark:text-white">Alex Morgan</p>
+                <p className="text-sm font-semibold dark:text-white">Stavros Sako</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Student ID: 2024099</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border-2 border-white dark:border-white/20 shadow-md"></div>
@@ -53,7 +51,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
 
-        {/* 4. SCROLLABLE WORKSPACE: This is the ONLY thing that scrolls */}
+        {/* SCROLLABLE WORKSPACE: This is the ONLY thing that scrolls */}
         <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
           {children}
         </main>

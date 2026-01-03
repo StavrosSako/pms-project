@@ -1,17 +1,21 @@
 import React from 'react';
-import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from 'lucide-react'; // Install lucide-react if needed, or use SVGs
-// If you don't have lucide-react installed yet, run: npm install lucide-react
+import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom'; 
 
 export default function Sidebar() {
+  const location = useLocation(); // 
+
   const menuItems = [
-    { icon: <LayoutDashboard size={20} />, label: "Overview", active: true },
-    { icon: <FolderKanban size={20} />, label: "Projects", active: false },
-    { icon: <Users size={20} />, label: "Team", active: false },
-    { icon: <Settings size={20} />, label: "Settings", active: false },
+    { path: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Overview" }, 
+    { path: "/projects", icon: <FolderKanban size={20} />, label: "Projects" },     
+    { path: "/team", icon: <Users size={20} />, label: "Team" },
+    { path: "/settings", icon: <Settings size={20} />, label: "Settings" },
   ];
 
   return (
-    <aside className="w-full h-full flex flex-col border-r transition-all duration-300 ... (keep the rest)">
+    <aside className="w-full h-full flex flex-col border-r transition-all duration-300
+      bg-surface/50 backdrop-blur-md border-white/20 text-text-main
+      dark:bg-[#0f172a]/60 dark:backdrop-blur-xl dark:border-white/5 dark:text-gray-300">
       
       {/* Logo Area */}
       <div className="h-20 flex items-center px-8 border-b border-gray-200/50 dark:border-white/5">
@@ -27,27 +31,33 @@ export default function Sidebar() {
 
       {/* Menu */}
       <nav className="flex-1 px-4 py-6 space-y-2">
-        {menuItems.map((item, index) => (
-          <button
-            key={index}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
-              ${item.active 
-                ? 'bg-primary/10 text-primary font-medium dark:bg-primary/20 dark:text-white' 
-                : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        ))}
+        {menuItems.map((item, index) => {
+          // Check if this item is active
+          const isActive = location.pathname === item.path; 
+          
+          return (
+            <Link
+              to={item.path || '#'} // Links to path or # if not defined
+              key={index}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                ${isActive 
+                  ? 'bg-primary/10 text-primary font-medium dark:bg-primary/20 dark:text-white shadow-sm' 
+                  : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* User / Logout */}
+      {/* Logout */}
       <div className="p-4 border-t border-gray-200/50 dark:border-white/5">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+        <Link to="/" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
           <LogOut size={20} />
           <span>Logout</span>
-        </button>
+        </Link>
       </div>
     </aside>
   );

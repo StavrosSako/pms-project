@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion';
 
-// A clean, minimal input field for light backgrounds
 export const Input = ({ icon: Icon, type, placeholder, value, onChange }) => (
   <div className="relative group mb-4">
     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-      {/* Changed text color to muted gray */}
       <Icon className="h-5 w-5 text-text-muted group-focus-within:text-primary transition-colors duration-300" />
     </div>
     <input

@@ -6,7 +6,7 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
-// This automatically adds the JWT token to requests if you are logged in
+// This automatically adds the JWT token to requests if we are logged in
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
