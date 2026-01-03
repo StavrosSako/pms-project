@@ -1,9 +1,17 @@
 import React from 'react';
 import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom'; 
+import { Link, useLocation, useNavigate } from 'react-router-dom'; 
+import { supabase } from '../supabaseClient';
+
 
 export default function Sidebar() {
-  const location = useLocation(); // 
+  const location = useLocation();
+  const navigate = useNavigate(); 
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut(); //clearing the session from the supabase
+    navigate('/'); 
+  }
 
   const menuItems = [
     { path: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Overview" }, 
@@ -54,10 +62,12 @@ export default function Sidebar() {
 
       {/* Logout */}
       <div className="p-4 border-t border-gray-200/50 dark:border-white/5">
-        <Link to="/" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+      <button
+        onClick={handleLogout} //attaching the function
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
           <LogOut size={20} />
           <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );

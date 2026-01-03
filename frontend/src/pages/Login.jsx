@@ -1,9 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient'; // <--- The only new import
 import ThemeToggle from '../components/ThemeToggle'; 
 
 export default function Login() {
+  const navigate = useNavigate();
+  
+  // --- ADDED LOGIC STARTS HERE ---
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleLogin = async (e) => {
+    e.preventDefault(); // Prevent page reload
+    setLoading(true);
+    setErrorMsg('');
+
+    // Ask Supabase to log us in
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setErrorMsg(error.message); // Show error if it fails
+    } else {
+      console.log('Logged in user:', data.user);
+      navigate('/dashboard'); // Go to dashboard if success
+    }
+  };
+
+
   return (
-    // CONTAINER
+    // CONTAINER (Your Exact Design)
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden transition-colors duration-500 bg-background dark:bg-dark-bg">
       
       {/* 1. TOGGLE BUTTON (Top Right) */}
@@ -32,20 +64,23 @@ export default function Login() {
           <p className="text-sm text-text-muted dark:text-dark-muted">Please enter your details to continue</p>
         </div>
 
-        {/* Form */}
-        <form className="space-y-5">
+        {/* Form - Added onSubmit handler */}
+        <form className="space-y-5" onSubmit={handleLogin}>
           
-          {/* Username Input */}
+          {/* Username/Email Input */}
           <div className="space-y-2">
             <div className="relative group">
               <input 
-                type="text" 
-                placeholder="Username"
+                type="email" 
+                placeholder="Email" // Changed to Email for Supabase
+                value={email} // <--- Connected to State
+                onChange={(e) => setEmail(e.target.value)} // <--- Connected to State
+                required
                 className="w-full px-4 py-3.5 pl-10 rounded-xl outline-none transition-all duration-300
                            bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20
                            dark:bg-dark-input dark:border-transparent dark:text-white dark:placeholder-gray-500 dark:focus:ring-white/10"
               />
-              {/* Icon */}
+              {/* Icon (Your original SVG) */}
               <svg className="absolute left-3 top-4 h-5 w-5 text-gray-400 dark:text-gray-500 transition-colors group-focus-within:text-primary dark:group-focus-within:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             </div>
           </div>
@@ -56,6 +91,9 @@ export default function Login() {
               <input 
                 type="password" 
                 placeholder="Password"
+                value={password} // <--- Connected to State
+                onChange={(e) => setPassword(e.target.value)} // <--- Connected to State
+                required
                 className="w-full px-4 py-3.5 pl-10 rounded-xl outline-none transition-all duration-300
                            bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20
                            dark:bg-dark-input dark:border-transparent dark:text-white dark:placeholder-gray-500 dark:focus:ring-white/10"
@@ -64,14 +102,23 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Error Message Display (Only shows if there is an error) */}
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm font-medium text-center">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* Submit Button */}
           <button 
-            type="button"
-            onClick={()=> navigate('/dashboard')}
+            type="submit" // Changed to submit
+            disabled={loading} // Disable while loading
             className="w-full py-3.5 px-4 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:opacity-90 transform hover:-translate-y-0.5 transition-all duration-300
                        bg-gradient-to-r from-primary to-accent text-white
-                       dark:bg-gradient-to-r dark:from-dark-btnStart dark:to-dark-btnEnd"
+                       dark:bg-gradient-to-r dark:from-dark-btnStart dark:to-dark-btnEnd
+                       disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
           >
-            Sign In &rarr;
+            {loading ? 'Signing In...' : 'Sign In \u2192'}
           </button>
 
         </form>

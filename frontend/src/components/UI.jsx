@@ -7,7 +7,7 @@ export const Input = ({ icon: Icon, type, placeholder, value, onChange }) => (
     </div>
     <input
       type={type}
-      className="block w-full pl-11 pr-4 py-4 bg-surface border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary block w-full p-2.5 transition-all duration-300 outline-none placeholder-text-muted text-text-main shadow-sm"
+      className="block w-full pl-11 pr-4 py-4 bg-surface border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary p-2.5 transition-all duration-300 outline-none placeholder-text-muted text-text-main shadow-sm"
       placeholder={placeholder}
       value={value}
       onChange={onChange}
