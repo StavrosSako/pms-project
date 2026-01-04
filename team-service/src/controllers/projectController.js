@@ -1,4 +1,5 @@
 import Project from '../models/Project.js';
+import { sendToAll } from '../realtime/notificationHub.js';
 
 export const getAllProjects = async (req, res) => {
   try {
@@ -42,6 +43,10 @@ export const createProject = async (req, res) => {
     });
 
     await project.save();
+    sendToAll('project_created', {
+      project: project?.toObject?.() || project,
+      projectId: project._id?.toString?.() || project.id
+    });
     res.status(201).json(project);
   } catch (error) {
     console.error('Error creating project:', error);
@@ -66,6 +71,10 @@ export const updateProject = async (req, res) => {
     if (dueDate !== undefined) project.dueDate = dueDate ? new Date(dueDate) : null;
 
     await project.save();
+    sendToAll('project_updated', {
+      project: project?.toObject?.() || project,
+      projectId: project._id?.toString?.() || project.id
+    });
     res.json(project);
   } catch (error) {
     console.error('Error updating project:', error);
@@ -81,7 +90,10 @@ export const deleteProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
+    const projectId = project._id?.toString?.() || project.id || req.params.id;
     await Project.findByIdAndDelete(req.params.id);
+
+    sendToAll('project_deleted', { projectId });
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
     console.error('Error deleting project:', error);

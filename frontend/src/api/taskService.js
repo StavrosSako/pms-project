@@ -66,17 +66,26 @@ export const taskService = {
   },
 
   // Dashboard stats
-  getDashboardStats: async (userId) => {
+  getDashboardStats: async (userId, teamId) => {
     try {
-      const response = await taskClient.get(`/api/dashboard/stats`, { params: { userId } });
+      const params = typeof userId === 'object' && userId !== null
+        ? userId
+        : (() => {
+          const p = {};
+          if (userId) p.userId = userId;
+          if (teamId) p.teamId = teamId;
+          return p;
+        })();
+      const response = await taskClient.get(`/api/dashboard/stats`, { params });
       return response.data;
     } catch (error) {
       if (error.code === 'ECONNREFUSED' || error.response?.status >= 500) {
         // Return default stats if service unavailable
         return {
-          activeProjects: 0,
           pendingTasks: 0,
-          completedTasks: 0
+          inProgressTasks: 0,
+          completedTasks: 0,
+          totalTasks: 0
         };
       }
       throw error;

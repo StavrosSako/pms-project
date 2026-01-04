@@ -1,49 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { taskService } from '../api/taskService';
-import { teamService } from '../api/teamService';
 
-export const useDashboardStats = (userId) => {
+export const useDashboardStats = (userId, teamId) => {
   const [stats, setStats] = useState({
-    activeProjects: 0,
+    totalTasks: 0,
     pendingTasks: 0,
+    inProgressTasks: 0,
     completedTasks: 0
   });
   const [loading, setLoading] = useState(true);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Fetch dashboard stats from task service (filtered to selected project)
+      const taskStats = await taskService.getDashboardStats(userId, teamId);
+
+      setStats({
+        totalTasks: taskStats.totalTasks || 0,
+        pendingTasks: taskStats.pendingTasks || 0,
+        inProgressTasks: taskStats.inProgressTasks || 0,
+        completedTasks: taskStats.completedTasks || 0
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      // Keep default values on error
+    } finally {
+      setLoading(false);
+    }
+  }, [teamId, userId]);
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch dashboard stats from task service
-        const taskStats = await taskService.getDashboardStats(userId);
-        
-        // Fetch active projects count
-        const projects = await teamService.getAllTeams();
-        const activeProjects = projects.filter(p => 
-          p.status === 'Active' || p.status === 'In Progress'
-        ).length;
-
-        setStats({
-          activeProjects,
-          pendingTasks: taskStats.pendingTasks || 0,
-          completedTasks: taskStats.completedTasks || 0
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-        // Keep default values on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (userId) {
+    if (teamId) {
       fetchStats();
     } else {
       setLoading(false);
     }
-  }, [userId]);
+  }, [fetchStats, teamId]);
 
-  return { stats, loading };
+  return { stats, loading, refetch: fetchStats };
 };
 

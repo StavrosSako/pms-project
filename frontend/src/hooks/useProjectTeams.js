@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { teamService } from '../api/teamService';
+import { subscribeSse } from '../api/sseClient';
 
 export const useProjectTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -39,10 +40,40 @@ export const useProjectTeams = () => {
     fetchTeams();
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const removeTeam = (teamId) => {
+      const id = normalize(teamId);
+      if (!id) return;
+      setTeams(prev => (prev || []).filter(t => normalize(getTeamId(t)) !== id));
+    };
+
+    const unsubscribe = subscribeSse({
+      url: 'http://localhost:8082/api/notifications/stream',
+      token,
+      onEvent: (evt) => {
+        if (evt.event === 'project_team_created' || evt.event === 'project_team_updated') {
+          if (evt.data?.team) upsertTeam(evt.data.team);
+          return;
+        }
+        if (evt.event === 'project_team_deleted') {
+          removeTeam(evt.data?.teamId);
+        }
+      },
+      onError: () => {
+        // Keep silent
+      }
+    });
+
+    return () => unsubscribe?.();
+  }, []);
+
   const createTeam = async (payload) => {
     try {
       const created = await teamService.createProjectTeam(payload);
-      setTeams(prev => [...prev, created]);
+      upsertTeam(created);
       return { success: true, data: created };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to create team' };
@@ -121,7 +152,7 @@ export const useProjectTeams = () => {
   const deleteTeam = async (teamId) => {
     try {
       await teamService.deleteProjectTeam(teamId);
-      setTeams(prev => prev.filter(t => getTeamId(t) !== teamId));
+      setTeams(prev => prev.filter(t => normalize(getTeamId(t)) !== normalize(teamId)));
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to delete team' };

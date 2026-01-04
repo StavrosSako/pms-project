@@ -3,9 +3,12 @@ import Task from '../models/Task.js';
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, teamId } = req.query;
 
     const filter = {};
+    if (teamId) {
+      filter.teamId = teamId;
+    }
     if (userId) {
       // Get tasks assigned to user or created by user
       filter.$or = [

@@ -1,25 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { MoreHorizontal, Calendar } from 'lucide-react';
 import { userAvatarGradient, userInitials, userDisplay } from './UserPicker';
 
 const getTaskId = (task) => task?.id || task?._id;
 
-export default function TaskCard({ task, usersById, onEdit, onDragStart }) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (!open) return;
-      if (!menuRef.current) return;
-      if (menuRef.current.contains(e.target)) return;
-      setOpen(false);
-    };
-
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [open]);
-
+export default function TaskCard({ task, usersById, onEdit, onDragStart, canEdit = true }) {
   // Color helper
   const getPriorityColor = (priority) => {
     const p = priority?.toUpperCase() || 'LOW';
@@ -71,11 +56,12 @@ export default function TaskCard({ task, usersById, onEdit, onDragStart }) {
 
   return (
     <div
-      className="group relative p-4 mb-3 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing
+      className={`group relative p-4 mb-3 rounded-xl border transition-all duration-200 ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
       bg-white border-gray-100 shadow-sm hover:shadow-md hover:border-primary/30
-      dark:bg-[#1e293b]/60 dark:border-white/5 dark:backdrop-blur-md dark:hover:border-white/20 dark:hover:bg-[#1e293b]/80"
-      draggable
+      dark:bg-[#1e293b]/60 dark:border-white/5 dark:backdrop-blur-md dark:hover:border-white/20 dark:hover:bg-[#1e293b]/80`}
+      draggable={!!canEdit}
       onDragStart={(e) => {
+        if (!canEdit) return;
         const id = getTaskId(task);
         if (onDragStart) onDragStart(e, id);
       }}
@@ -101,29 +87,19 @@ export default function TaskCard({ task, usersById, onEdit, onDragStart }) {
           </span>
         </div>
 
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setOpen(v => !v)}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
-          >
-            <MoreHorizontal size={16} />
-          </button>
-
-          {open && (
-            <div className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0f172a] shadow-lg overflow-hidden z-10">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  if (onEdit) onEdit(task);
-                }}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
-              >
-                Edit
-              </button>
-            </div>
-          )}
+        <div className="relative">
+          {canEdit && typeof onEdit === 'function' ? (
+            <button
+              type="button"
+              onClick={() => {
+                onEdit(task);
+              }}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+              title="Edit"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          ) : null}
         </div>
       </div>
 

@@ -7,23 +7,40 @@ import { useModal } from '../hooks/useModal';
 import CreateTaskModal from './CreateTaskModal';
 import EditTaskModal from './EditTaskModal';
 import { subscribeSse } from '../api/sseClient';
-import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
 import { useTeam } from '../hooks/useTeam';
 import { useMyTeams } from '../hooks/useMyTeams';
+import { teamService } from '../api/teamService';
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ projectId }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-
-  const { projects } = useProjects();
   const { members } = useTeam();
   const { teams: myTeams } = useMyTeams();
-  const [selectedProjectId, setSelectedProjectId] = useState('all');
 
-  const taskFilters = selectedProjectId === 'all' ? {} : { teamId: selectedProjectId };
+  const [adminProjectTeams, setAdminProjectTeams] = useState([]);
 
-  const { tasks, loading, error, createTask, updateTask, updateTaskStatus, deleteTask, refetch } = useTasks(taskFilters);
+  const normalize = (v) => (v === undefined || v === null ? '' : `${v}`);
+
+  const hasAssignedTeam = useMemo(() => {
+    const pid = normalize(projectId);
+    if (!pid) return false;
+
+    if (isAdmin) {
+      return (adminProjectTeams || []).some(t => normalize(t?.projectId) === pid);
+    }
+
+    return (myTeams || []).some(t => normalize(t?.projectId) === pid);
+  }, [adminProjectTeams, isAdmin, myTeams, projectId]);
+
+  const taskFilters = projectId
+    ? { teamId: hasAssignedTeam ? projectId : '__no_assigned_team__' }
+    : { teamId: '__no_project_selected__' };
+
+  const { tasks, loading, error, createTask, updateTask, updateTaskStatus, deleteTask, refetch } = useTasks(
+    taskFilters,
+    { enabled: !!projectId }
+  );
   const { openModal } = useModal();
 
   const [draggedTaskId, setDraggedTaskId] = useState(null);
@@ -31,28 +48,16 @@ export default function KanbanBoard() {
 
   const getTaskId = (task) => task?.id || task?._id;
 
-  const getProjectId = (project) => project?.id || project?._id;
-  const myProjectIds = useMemo(() => {
-    const set = new Set();
-    for (const t of myTeams || []) {
-      const pid = `${t?.projectId || ''}`;
-      if (pid) set.add(pid);
-    }
-    return set;
-  }, [myTeams]);
-
-  const visibleProjects = isAdmin ? (projects || []) : (projects || []).filter(p => myProjectIds.has(`${getProjectId(p)}`));
-  const allowedProjectIds = new Set(visibleProjects.map(p => `${getProjectId(p)}`));
-
   const canCreateForProject = useMemo(() => {
-    const pid = `${selectedProjectId || ''}`;
-    if (!pid || pid === 'all') return false;
+    const pid = `${projectId || ''}`;
+    if (!pid) return false;
+    if (!hasAssignedTeam) return false;
     if (isAdmin) return true;
-    const uid = `${user?.id || ''}`;
+    const uid = `${user?.id || user?._id || ''}`;
     const team = (myTeams || []).find(t => `${t?.projectId || ''}` === pid);
     if (!team) return false;
     return (team?.members || []).some(m => `${m?.userId}` === uid && m?.role === 'TEAM_LEADER');
-  }, [isAdmin, myTeams, selectedProjectId, user]);
+  }, [hasAssignedTeam, isAdmin, myTeams, projectId, user]);
 
   const usersById = useMemo(() => {
     const map = new Map();
@@ -62,10 +67,6 @@ export default function KanbanBoard() {
     }
     return map;
   }, [members]);
-
-  const displayTasks = isAdmin
-    ? (tasks || [])
-    : (tasks || []).filter(t => allowedProjectIds.has(`${t?.teamId}`));
 
   const getTasksByStatus = (list) => {
     const grouped = {
@@ -83,7 +84,7 @@ export default function KanbanBoard() {
     return grouped;
   };
 
-  const tasksByStatus = getTasksByStatus(displayTasks);
+  const tasksByStatus = getTasksByStatus(tasks || []);
 
   const columns = [
     {
@@ -105,8 +106,10 @@ export default function KanbanBoard() {
 
   const handleAddTask = (status) => {
     if (!canCreateForProject) {
-      if (`${selectedProjectId}` === 'all') {
+      if (!projectId) {
         window.alert('Select a project first to create tasks.');
+      } else if (!hasAssignedTeam) {
+        window.alert('This project has no team assigned. Assign a team to this project before creating tasks.');
       } else {
         window.alert('Only the team leader of the assigned team can create tasks for this project.');
       }
@@ -115,16 +118,18 @@ export default function KanbanBoard() {
     openModal('createTask', {
       title: 'Create New Task',
       initialStatus: status,
-      initialTeamId: selectedProjectId === 'all' ? '' : selectedProjectId
+      initialTeamId: projectId
     });
   };
 
   const handleTaskDrop = async (taskId, newStatus) => {
+    if (!canCreateForProject) return;
     if (!taskId || !newStatus) return;
     await updateTaskStatus(taskId, newStatus);
   };
 
   const handleEditTask = (task) => {
+    if (!canCreateForProject) return;
     openModal('editTask', { title: 'Edit Task', task });
   };
 
@@ -165,6 +170,62 @@ export default function KanbanBoard() {
     };
   }, [refetch]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let mounted = true;
+    const getId = (t) => `${t?.id || t?._id || ''}`;
+
+    const fetchTeams = async () => {
+      try {
+        const data = await teamService.getAllProjectTeams();
+        if (!mounted) return;
+        setAdminProjectTeams(Array.isArray(data) ? data : []);
+      } catch (_) {
+        if (!mounted) return;
+        setAdminProjectTeams([]);
+      }
+    };
+
+    fetchTeams();
+
+    const unsubscribe = subscribeSse({
+      url: 'http://localhost:8082/api/notifications/stream',
+      token,
+      onEvent: (evt) => {
+        if (evt.event === 'project_team_created' || evt.event === 'project_team_updated') {
+          const team = evt.data?.team;
+          const id = getId(team);
+          if (!id) return;
+          setAdminProjectTeams(prev => {
+            const list = prev || [];
+            const idx = list.findIndex(x => getId(x) === id);
+            if (idx === -1) return [...list, team];
+            const next = [...list];
+            next[idx] = team;
+            return next;
+          });
+          return;
+        }
+        if (evt.event === 'project_team_deleted') {
+          const id = `${evt.data?.teamId || ''}`;
+          if (!id) return;
+          setAdminProjectTeams(prev => (prev || []).filter(t => getId(t) !== id));
+        }
+      },
+      onError: () => {
+        // Keep silent
+      }
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, [isAdmin]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -183,27 +244,6 @@ export default function KanbanBoard() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          Project
-        </div>
-        <select
-          value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
-          className="px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 dark:text-gray-300"
-        >
-          <option value="all">{isAdmin ? 'All projects' : 'All my projects'}</option>
-          {visibleProjects.map(p => {
-            const id = getProjectId(p);
-            return (
-              <option key={id} value={id}>
-                {p.name || p.title}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-
       <div className="flex h-full gap-6 overflow-x-auto pb-4">
         {columns.map((col) => (
         <div
@@ -253,6 +293,7 @@ export default function KanbanBoard() {
                 <TaskCard
                   task={task}
                   onEdit={handleEditTask}
+                  canEdit={canCreateForProject}
                   usersById={usersById}
                   onDragStart={(e, id) => {
                     setDraggedTaskId(id);

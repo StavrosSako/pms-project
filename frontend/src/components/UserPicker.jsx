@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 
 const normalize = (v) => (v === undefined || v === null ? '' : `${v}`);
@@ -86,9 +86,11 @@ export const UserSingleSelect = ({
   users,
   value,
   onChange,
-  placeholder = 'Select...'
+  placeholder = 'Select...',
+  disabled = false
 }) => {
   const [open, setOpen] = useState(false);
+  const [maxHeight, setMaxHeight] = useState(256);
   const [query, setQuery] = useState('');
   const rootRef = useRef(null);
 
@@ -119,13 +121,60 @@ export const UserSingleSelect = ({
     setQuery('');
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const el = rootRef.current;
+    if (!el) return;
+
+    const modalBody = el.closest('[data-modal-body]');
+    const getViewport = () => {
+      if (!modalBody) return { top: 0, bottom: window.innerHeight };
+      const r = modalBody.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom };
+    };
+
+    const compute = (allowScroll = true) => {
+      const rect = el.getBoundingClientRect();
+      const vp = getViewport();
+      const spaceBelow = Math.max(0, vp.bottom - rect.bottom);
+      const spaceAbove = Math.max(0, rect.top - vp.top);
+      const desired = 256;
+
+      if (modalBody && allowScroll && spaceBelow < desired && modalBody.scrollHeight > modalBody.clientHeight) {
+        const delta = (desired - spaceBelow) + 24;
+        modalBody.scrollTop = Math.min(modalBody.scrollTop + delta, modalBody.scrollHeight);
+        requestAnimationFrame(() => compute(false));
+        return;
+      }
+
+      const nextMax = Math.max(140, Math.min(desired, spaceBelow - 16));
+      setMaxHeight(nextMax);
+    };
+
+    compute();
+
+    const onResize = () => compute();
+    const onScroll = () => compute();
+
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setOpen(v => !v);
+        }}
         className="w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-colors
-          bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
+          bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <div className="flex items-center gap-3 min-w-0">
           {selected ? <Avatar user={selected} size={28} /> : <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-white/10" />}
@@ -139,7 +188,7 @@ export const UserSingleSelect = ({
         <ChevronDown size={18} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
+      {open && !disabled && (
         <div className="absolute z-30 mt-2 w-full rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0f172a] shadow-xl overflow-hidden">
           <div className="p-3 border-b border-gray-200 dark:border-white/10">
             <div className="relative">
@@ -154,7 +203,7 @@ export const UserSingleSelect = ({
             </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto p-2">
+          <div className="overflow-y-auto p-2 scrollbar-hide" style={{ maxHeight }}>
             {filtered.length === 0 ? (
               <div className="px-3 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">No results</div>
             ) : (
@@ -188,10 +237,13 @@ export const UserMultiSelect = ({
   users,
   values,
   onChange,
-  placeholder = 'Add members...'
+  placeholder = 'Add members...',
+  disabled = false
 }) => {
   const [open, setOpen] = useState(false);
+  const [maxHeight, setMaxHeight] = useState(256);
   const [query, setQuery] = useState('');
+  const rootRef = useRef(null);
 
   const normalizedUsers = useMemo(
     () => (users || []).map(u => ({ ...u, _idNorm: normalize(u?.id || u?._id) })).filter(u => !!u._idNorm),
@@ -230,13 +282,59 @@ export const UserMultiSelect = ({
     onChange(Array.from(next));
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const el = rootRef.current;
+    if (!el) return;
+
+    const modalBody = el.closest('[data-modal-body]');
+    const getViewport = () => {
+      if (!modalBody) return { top: 0, bottom: window.innerHeight };
+      const r = modalBody.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom };
+    };
+
+    const compute = (allowScroll = true) => {
+      const rect = el.getBoundingClientRect();
+      const vp = getViewport();
+      const spaceBelow = Math.max(0, vp.bottom - rect.bottom);
+      const desired = 256;
+
+      if (modalBody && allowScroll && spaceBelow < desired && modalBody.scrollHeight > modalBody.clientHeight) {
+        const delta = (desired - spaceBelow) + 24;
+        modalBody.scrollTop = Math.min(modalBody.scrollTop + delta, modalBody.scrollHeight);
+        requestAnimationFrame(() => compute(false));
+        return;
+      }
+
+      const nextMax = Math.max(140, Math.min(desired, spaceBelow - 16));
+      setMaxHeight(nextMax);
+    };
+
+    compute();
+
+    const onResize = () => compute();
+    const onScroll = () => compute();
+
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setOpen(v => !v);
+        }}
         className="w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-colors
-          bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
+          bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           {selectedUsers.length === 0 ? (
@@ -266,7 +364,7 @@ export const UserMultiSelect = ({
         <ChevronDown size={18} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
+      {open && !disabled && (
         <div className="absolute z-30 mt-2 w-full rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0f172a] shadow-xl overflow-hidden">
           <div className="p-3 border-b border-gray-200 dark:border-white/10">
             <div className="relative">
@@ -281,7 +379,7 @@ export const UserMultiSelect = ({
             </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto p-2">
+          <div className="overflow-y-auto p-2 scrollbar-hide" style={{ maxHeight }}>
             {filtered.length === 0 ? (
               <div className="px-3 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">No results</div>
             ) : (

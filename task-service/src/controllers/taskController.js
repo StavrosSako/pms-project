@@ -40,6 +40,37 @@ const isLeaderForProject = (teams, userId, projectId) => {
   return (team?.members || []).some(m => `${m?.userId}` === uid && m?.role === 'TEAM_LEADER');
 };
 
+const requireLeaderOrAdmin = async (req, res, projectId) => {
+  if (req.user?.role === 'ADMIN') return true;
+
+  const token = getBearerToken(req);
+  if (!token) {
+    res.status(401).json({ message: 'Authentication required' });
+    return false;
+  }
+
+  try {
+    const teams = await fetchMyProjectTeams(token);
+    const ok = isLeaderForProject(teams, req.user?.id, projectId);
+    if (!ok) {
+      res.status(403).json({ message: 'Insufficient permissions' });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    if (e?.status === 401) {
+      res.status(401).json({ message: 'Authentication required' });
+      return false;
+    }
+    if (e?.status === 403) {
+      res.status(403).json({ message: 'Insufficient permissions' });
+      return false;
+    }
+    res.status(503).json({ message: 'Unable to validate team leadership right now' });
+    return false;
+  }
+};
+
 // Get all tasks (with optional filters)
 export const getAllTasks = async (req, res) => {
   try {
@@ -140,13 +171,9 @@ export const updateTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check if user has permission (created task, assigned to task, or admin)
-    const isAssigned = task.assignees.some(a => a.userId === req.user.id);
-    const isCreator = task.createdBy === req.user.id;
-    
-    if (req.user.role !== 'ADMIN' && !isCreator && !isAssigned) {
-      return res.status(403).json({ message: 'Insufficient permissions to update task' });
-    }
+    const targetTeamId = req.body?.teamId || task.teamId;
+    const allowed = await requireLeaderOrAdmin(req, res, targetTeamId);
+    if (!allowed) return;
 
     if (title) task.title = title;
     if (description !== undefined) task.description = description;
@@ -184,6 +211,9 @@ export const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    const allowed = await requireLeaderOrAdmin(req, res, task.teamId);
+    if (!allowed) return;
+
     task.status = status;
     await task.save();
 
@@ -209,10 +239,8 @@ export const deleteTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Only admin or task creator can delete
-    if (req.user.role !== 'ADMIN' && task.createdBy !== req.user.id) {
-      return res.status(403).json({ message: 'Insufficient permissions to delete task' });
-    }
+    const allowed = await requireLeaderOrAdmin(req, res, task.teamId);
+    if (!allowed) return;
 
     const taskId = task._id?.toString?.() || task.id;
     const teamId = task.teamId;

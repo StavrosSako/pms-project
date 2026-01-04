@@ -8,6 +8,7 @@ import ProjectSelect from '../components/ProjectSelect';
 import { UserMultiSelect } from '../components/UserPicker';
 import { useAuth } from '../hooks/useAuth';
 import { useMyTeams } from '../hooks/useMyTeams';
+import { teamService } from '../api/teamService';
 
 const CreateTaskModal = ({ createTask }) => {
   const { modalProps, closeModal } = useModal();
@@ -19,6 +20,8 @@ const CreateTaskModal = ({ createTask }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const { teams: myTeams } = useMyTeams();
+
+  const [adminProjectTeams, setAdminProjectTeams] = useState([]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -34,7 +37,7 @@ const CreateTaskModal = ({ createTask }) => {
   const leaderProjectIds = React.useMemo(() => {
     if (isAdmin) return new Set();
     const set = new Set();
-    const uid = `${user?.id || ''}`;
+    const uid = `${user?.id || user?._id || ''}`;
     for (const t of myTeams || []) {
       const pid = `${t?.projectId || ''}`;
       if (!pid) continue;
@@ -48,6 +51,55 @@ const CreateTaskModal = ({ createTask }) => {
     if (isAdmin) return projects || [];
     return (projects || []).filter(p => leaderProjectIds.has(`${getProjectId(p)}`));
   }, [isAdmin, leaderProjectIds, projects]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let mounted = true;
+    const fetchTeams = async () => {
+      try {
+        const data = await teamService.getAllProjectTeams();
+        if (!mounted) return;
+        setAdminProjectTeams(Array.isArray(data) ? data : []);
+      } catch (_) {
+        if (!mounted) return;
+        setAdminProjectTeams([]);
+      }
+    };
+
+    fetchTeams();
+    return () => {
+      mounted = false;
+    };
+  }, [isAdmin]);
+
+  const normalize = (v) => (v === undefined || v === null ? '' : `${v}`);
+  const assignedTeamMemberIds = React.useMemo(() => {
+    const pid = normalize(teamId);
+    if (!pid) return [];
+
+    const team = isAdmin
+      ? (adminProjectTeams || []).find(t => normalize(t?.projectId) === pid)
+      : (myTeams || []).find(t => normalize(t?.projectId) === pid);
+
+    const ids = (team?.members || []).map(m => normalize(m?.userId)).filter(Boolean);
+    return Array.from(new Set(ids));
+  }, [adminProjectTeams, isAdmin, myTeams, teamId]);
+
+  const eligibleUsers = React.useMemo(() => {
+    if (!assignedTeamMemberIds.length) return [];
+    const allowed = new Set(assignedTeamMemberIds);
+    return (allUsers || []).filter(u => allowed.has(normalize(u?.id || u?._id)));
+  }, [allUsers, assignedTeamMemberIds]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    if (assignedTeamMemberIds.length === 0) {
+      setAssignees([]);
+    } else {
+      setAssignees(prev => (prev || []).filter(uid => assignedTeamMemberIds.includes(normalize(uid))));
+    }
+  }, [assignedTeamMemberIds, teamId]);
 
   useEffect(() => {
     setStatus(initialStatus);
@@ -173,10 +225,11 @@ const CreateTaskModal = ({ createTask }) => {
             <Users size={14} className="text-gray-400" />
             <div className="flex-1">
               <UserMultiSelect
-                users={allUsers}
+                users={eligibleUsers}
                 values={assignees}
                 onChange={setAssignees}
-                placeholder="Assign users..."
+                disabled={!!teamId && assignedTeamMemberIds.length === 0}
+                placeholder={!!teamId && assignedTeamMemberIds.length === 0 ? 'No team assigned to this project' : 'Assign users...'}
               />
             </div>
           </div>

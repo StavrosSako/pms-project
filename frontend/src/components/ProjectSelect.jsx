@@ -1,12 +1,21 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, FolderKanban, Search, X } from 'lucide-react';
 
 const normalize = (v) => (v === undefined || v === null ? '' : `${v}`);
 const getProjectId = (p) => normalize(p?.id || p?._id);
 
-const ProjectSelect = ({ projects, value, onChange }) => {
+const ProjectSelect = ({
+  projects,
+  value,
+  onChange,
+  emptyTitle = 'Assign a project (optional)',
+  emptySubtitle = 'You can assign later',
+  clearable = true
+}) => {
   const [open, setOpen] = useState(false);
+  const [maxHeight, setMaxHeight] = useState(256);
   const [query, setQuery] = useState('');
+  const rootRef = useRef(null);
 
   const normalizedProjects = useMemo(
     () => (projects || []).map(p => ({ ...p, _idNorm: getProjectId(p) })).filter(p => !!p._idNorm),
@@ -21,7 +30,7 @@ const ProjectSelect = ({ projects, value, onChange }) => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return normalizedProjects;
-    return normalizedProjects.filter(p => (p?.name || '').toLowerCase().includes(q));
+    return normalizedProjects.filter(p => ((p?.name || p?.title || '')).toLowerCase().includes(q));
   }, [normalizedProjects, query]);
 
   const select = (p) => {
@@ -35,8 +44,50 @@ const ProjectSelect = ({ projects, value, onChange }) => {
     onChange('');
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const el = rootRef.current;
+    if (!el) return;
+
+    const modalBody = el.closest('[data-modal-body]');
+    const getViewport = () => {
+      if (!modalBody) return { top: 0, bottom: window.innerHeight };
+      const r = modalBody.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom };
+    };
+
+    const compute = (allowScroll = true) => {
+      const rect = el.getBoundingClientRect();
+      const vp = getViewport();
+      const spaceBelow = Math.max(0, vp.bottom - rect.bottom);
+      const desired = 256;
+
+      if (modalBody && allowScroll && spaceBelow < desired && modalBody.scrollHeight > modalBody.clientHeight) {
+        const delta = (desired - spaceBelow) + 24;
+        modalBody.scrollTop = Math.min(modalBody.scrollTop + delta, modalBody.scrollHeight);
+        requestAnimationFrame(() => compute(false));
+        return;
+      }
+
+      const nextMax = Math.max(140, Math.min(desired, spaceBelow - 16));
+      setMaxHeight(nextMax);
+    };
+
+    compute();
+
+    const onResize = () => compute();
+    const onScroll = () => compute();
+
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -49,16 +100,16 @@ const ProjectSelect = ({ projects, value, onChange }) => {
           </div>
           <div className="min-w-0 text-left">
             <div className={`text-sm font-semibold truncate ${selected ? 'text-gray-800 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-              {selected ? selected.name : 'Assign a project (optional)'}
+              {selected ? (selected.name || selected.title) : emptyTitle}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {selected ? 'Click to change' : 'You can assign later'}
+              {selected ? 'Click to change' : emptySubtitle}
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-1">
-          {selected ? (
+          {selected && clearable ? (
             <button
               type="button"
               onClick={clear}
@@ -87,7 +138,7 @@ const ProjectSelect = ({ projects, value, onChange }) => {
             </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto p-2">
+          <div className="overflow-y-auto p-2 scrollbar-hide" style={{ maxHeight }}>
             {filtered.length === 0 ? (
               <div className="px-3 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">No projects</div>
             ) : (
@@ -98,7 +149,7 @@ const ProjectSelect = ({ projects, value, onChange }) => {
                   onClick={() => select(p)}
                   className={`w-full px-3 py-2 rounded-xl text-left transition-colors ${normalize(p._idNorm) === normalize(value) ? 'bg-primary/10 dark:bg-primary/20' : 'hover:bg-gray-100 dark:hover:bg-white/5'}`}
                 >
-                  <div className="text-sm font-semibold text-gray-800 dark:text-white truncate">{p.name}</div>
+                  <div className="text-sm font-semibold text-gray-800 dark:text-white truncate">{p.name || p.title}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{p.description || '—'}</div>
                 </button>
               ))

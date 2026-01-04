@@ -1,4 +1,5 @@
 import Team from '../models/Team.js';
+import { sendToAll } from '../realtime/notificationHub.js';
 
 // Get all teams
 export const getAllTeams = async (req, res) => {
@@ -50,6 +51,10 @@ export const createTeam = async (req, res) => {
     });
 
     await team.save();
+    sendToAll('team_created', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.status(201).json(team);
   } catch (error) {
     console.error('Error creating team:', error);
@@ -84,6 +89,10 @@ export const updateTeam = async (req, res) => {
     if (dueDate !== undefined) team.dueDate = dueDate ? new Date(dueDate) : null;
 
     await team.save();
+    sendToAll('team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.json(team);
   } catch (error) {
     console.error('Error updating team:', error);
@@ -105,7 +114,10 @@ export const deleteTeam = async (req, res) => {
       return res.status(403).json({ message: 'Insufficient permissions to delete team' });
     }
 
+    const teamId = team._id?.toString?.() || team.id || req.params.id;
     await Team.findByIdAndDelete(req.params.id);
+
+    sendToAll('team_deleted', { teamId });
     res.json({ message: 'Team deleted successfully' });
   } catch (error) {
     console.error('Error deleting team:', error);
@@ -167,6 +179,10 @@ export const addTeamMember = async (req, res) => {
     });
 
     await team.save();
+    sendToAll('team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.json(team);
   } catch (error) {
     console.error('Error adding team member:', error);
@@ -194,6 +210,11 @@ export const removeTeamMember = async (req, res) => {
 
     team.members = team.members.filter(m => m.userId !== req.params.userId);
     await team.save();
+
+    sendToAll('team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     
     res.json({ message: 'Member removed successfully', team });
   } catch (error) {

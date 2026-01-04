@@ -1,4 +1,5 @@
 import ProjectTeam from '../models/ProjectTeam.js';
+import { sendToAll } from '../realtime/notificationHub.js';
 
 const normalizeUserId = (value) => (value === undefined || value === null ? '' : `${value}`);
 
@@ -108,6 +109,11 @@ export const createProjectTeam = async (req, res) => {
     if (projectId) team.projectId = projectId;
 
     await team.save();
+
+    sendToAll('project_team_created', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.status(201).json(team);
   } catch (error) {
     if (error?.code === 11000) {
@@ -133,6 +139,10 @@ export const updateProjectTeam = async (req, res) => {
     if (projectId !== undefined) team.projectId = projectId || undefined;
 
     await team.save();
+    sendToAll('project_team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.json(team);
   } catch (error) {
     if (error?.code === 11000) {
@@ -151,7 +161,10 @@ export const deleteProjectTeam = async (req, res) => {
       return res.status(404).json({ message: 'Team not found' });
     }
 
+    const teamId = team._id?.toString?.() || team.id || req.params.id;
     await ProjectTeam.findByIdAndDelete(req.params.id);
+
+    sendToAll('project_team_deleted', { teamId });
     res.json({ message: 'Team deleted successfully' });
   } catch (error) {
     console.error('Error deleting project team:', error);
@@ -197,6 +210,11 @@ export const addProjectTeamMember = async (req, res) => {
     team.members.push({ userId: normalized, role: 'TEAM_MEMBER', joinedAt: new Date() });
     await team.save();
 
+    sendToAll('project_team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
+
     res.json(team);
   } catch (error) {
     console.error('Error adding project team member:', error);
@@ -227,6 +245,11 @@ export const removeProjectTeamMember = async (req, res) => {
     }
 
     await team.save();
+
+    sendToAll('project_team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.json(team);
   } catch (error) {
     console.error('Error removing project team member:', error);
@@ -261,6 +284,11 @@ export const setProjectTeamLeader = async (req, res) => {
     }));
 
     await team.save();
+
+    sendToAll('project_team_updated', {
+      team: team?.toObject?.() || team,
+      teamId: team._id?.toString?.() || team.id
+    });
     res.json(team);
   } catch (error) {
     console.error('Error setting project team leader:', error);

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { taskService } from '../api/taskService';
 
-export const useTasks = (filters = {}) => {
+export const useTasks = (filters = {}, options = {}) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const enabled = options?.enabled !== false;
 
   const getTaskId = (task) => task?.id || task?._id;
 
@@ -24,8 +26,15 @@ export const useTasks = (filters = {}) => {
       }
     };
 
+    if (!enabled) {
+      setTasks([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     fetchTasks();
-  }, [JSON.stringify(filters)]);
+  }, [enabled, JSON.stringify(filters)]);
 
   const createTask = async (taskData) => {
     try {
@@ -88,6 +97,12 @@ export const useTasks = (filters = {}) => {
   };
 
   const refetch = useCallback(async () => {
+    if (!enabled) {
+      setTasks([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await taskService.getAllTasks(filters);
@@ -97,7 +112,7 @@ export const useTasks = (filters = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [JSON.stringify(filters)]);
+  }, [enabled, JSON.stringify(filters)]);
 
   return { 
     tasks, 

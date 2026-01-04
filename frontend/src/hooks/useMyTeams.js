@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { teamService } from '../api/teamService';
+import { subscribeSse } from '../api/sseClient';
 
 export const useMyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -22,6 +23,47 @@ export const useMyTeams = () => {
     };
 
     fetch();
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let scheduled = null;
+    const refreshSilent = () => {
+      if (scheduled) return;
+      scheduled = setTimeout(async () => {
+        scheduled = null;
+        try {
+          const data = await teamService.getMyProjectTeams();
+          setTeams(Array.isArray(data) ? data : []);
+        } catch (err) {
+          setError(err.response?.data?.message || err.message || 'Failed to load teams');
+        }
+      }, 200);
+    };
+
+    const unsubscribe = subscribeSse({
+      url: 'http://localhost:8082/api/notifications/stream',
+      token,
+      onEvent: (evt) => {
+        if (
+          evt.event === 'project_team_created' ||
+          evt.event === 'project_team_updated' ||
+          evt.event === 'project_team_deleted'
+        ) {
+          refreshSilent();
+        }
+      },
+      onError: () => {
+        // Keep silent
+      }
+    });
+
+    return () => {
+      if (scheduled) clearTimeout(scheduled);
+      unsubscribe?.();
+    };
   }, []);
 
   return { teams, loading, error };

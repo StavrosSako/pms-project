@@ -7,13 +7,32 @@ import { Modal } from '../components/Modal';
 import { Input } from '../components/UI';
 import CreateProjectModal from '../components/CreateProjectModal';
 import EditProjectModal from '../components/EditProjectModal';
+import { useAuth } from '../hooks/useAuth';
+import { useMyTeams } from '../hooks/useMyTeams';
 
 export default function Projects() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const { projects, loading, error, createProject, updateProject, deleteProject } = useProjects();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const { teams: myTeams } = useMyTeams();
   const { openModal } = useModal();
+
+  const getProjectId = (p) => p?.id || p?._id;
+  const myProjectIds = React.useMemo(() => {
+    const set = new Set();
+    for (const t of myTeams || []) {
+      const pid = `${t?.projectId || ''}`;
+      if (pid) set.add(pid);
+    }
+    return set;
+  }, [myTeams]);
+
+  const visibleProjects = isAdmin
+    ? (projects || [])
+    : (projects || []).filter(p => myProjectIds.has(`${getProjectId(p)}`));
 
   // Helper: Status Colors
   const getStatusColor = (status) => {
@@ -26,7 +45,7 @@ export default function Projects() {
   };
 
   // Filter and search logic
-  const filteredProjects = projects
+  const filteredProjects = visibleProjects
     .filter(p => {
       const matchesFilter = filter === 'All' || p.status === filter;
       const matchesSearch = !searchTerm || 
@@ -140,7 +159,7 @@ export default function Projects() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-white/5">
                 {filteredProjects.map((project) => (
-                  <tr key={project.id} className="group hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                  <tr key={project.id || project._id} className="group hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
                     <td className="p-4">
                       <div className="font-semibold text-gray-800 dark:text-white">{project.name || project.title}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{project.description || project.client || 'No description'}</div>
@@ -195,7 +214,7 @@ export default function Projects() {
         /* GRID VIEW   */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => (
-            <div key={project.id} className="group p-5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+            <div key={project.id || project._id} className="group p-5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               
               {/* Header */}
               <div className="flex justify-between items-start mb-4">
