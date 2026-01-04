@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import ProjectTeam from '../models/ProjectTeam.js';
 
 const connectDB = async () => {
   try {
@@ -10,6 +11,8 @@ const connectDB = async () => {
     });
     
     console.log('MongoDB connected for Team Service');
+
+    await ProjectTeam.syncIndexes();
   } catch (error) {
     console.error('MongoDB connection error:', error);
     process.exit(1);

@@ -6,12 +6,13 @@ import { useModal } from '../hooks/useModal';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/UI';
 import CreateProjectModal from '../components/CreateProjectModal';
+import EditProjectModal from '../components/EditProjectModal';
 
 export default function Projects() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const { projects, loading, error, createProject } = useProjects();
+  const { projects, loading, error, createProject, updateProject, deleteProject } = useProjects();
   const { openModal } = useModal();
 
   // Helper: Status Colors
@@ -175,7 +176,12 @@ export default function Projects() {
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"><MoreHorizontal size={18} /></button>
+                      <button
+                        onClick={() => openModal('editProject', { title: 'Edit Project', project })}
+                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -196,7 +202,12 @@ export default function Projects() {
                 <div className={`p-2 rounded-lg ${getStatusColor(project.status)}`}>
                   {project.status === 'Completed' ? <CheckCircle2 size={20} /> : <Clock size={20} />}
                 </div>
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-white"><MoreHorizontal size={20} /></button>
+                <button
+                  onClick={() => openModal('editProject', { title: 'Edit Project', project })}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                >
+                  <MoreHorizontal size={20} />
+                </button>
               </div>
 
               {/* Title & Desc */}
@@ -242,6 +253,9 @@ export default function Projects() {
 
     {/* Create Project Modal */}
     <CreateProjectModal createProject={createProject} />
+
+    {/* Edit Project Modal */}
+    <EditProjectModal updateProject={updateProject} deleteProject={deleteProject} />
     </>
   );
 }

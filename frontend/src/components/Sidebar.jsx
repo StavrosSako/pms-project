@@ -9,6 +9,8 @@ export default function Sidebar() {
   const navigate = useNavigate(); 
   const { user } = useAuth(); // Get user from auth hook
 
+  const isAdmin = user?.role === 'ADMIN';
+
   // Inside Sidebar.jsx
   const handleLogout = async () => {
       localStorage.removeItem('token');
@@ -20,6 +22,7 @@ export default function Sidebar() {
     { path: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Overview" }, 
     { path: "/projects", icon: <FolderKanban size={20} />, label: "Projects" },     
     { path: "/team", icon: <Users size={20} />, label: "Team" },
+    ...(isAdmin ? [{ path: "/members", icon: <Users size={20} />, label: "Member Directory" }] : []),
     { path: "/settings", icon: <Settings size={20} />, label: "Settings" },
   ];
 

@@ -4,11 +4,13 @@ import { Modal } from '../components/Modal.jsx';
 import { useModal } from '../hooks/useModal.jsx';
 import { useProjects } from '../hooks/useProjects.js';
 import { useTeam } from '../hooks/useTeam.js';
+import ProjectSelect from '../components/ProjectSelect';
+import { UserMultiSelect } from '../components/UserPicker';
 
 const getTaskId = (task) => task?.id || task?._id;
 
-const EditTaskModal = ({ updateTask }) => {
-  const { modalProps } = useModal();
+const EditTaskModal = ({ updateTask, deleteTask }) => {
+  const { modalProps, closeModal } = useModal();
   const task = modalProps.task;
 
   const { projects, loading: projectsLoading } = useProjects();
@@ -24,7 +26,6 @@ const EditTaskModal = ({ updateTask }) => {
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     setTitle(task?.title || '');
@@ -35,7 +36,6 @@ const EditTaskModal = ({ updateTask }) => {
     setDueDate(task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '');
     setError(null);
     setLoading(false);
-    setShowAdvanced(false);
   }, [task]);
 
   const handleSubmit = async () => {
@@ -71,6 +71,27 @@ const EditTaskModal = ({ updateTask }) => {
     return { success: true };
   };
 
+  const handleDelete = async () => {
+    if (!taskId) return;
+
+    const ok = window.confirm('Delete this task? This cannot be undone.');
+    if (!ok) return;
+
+    setLoading(true);
+    setError(null);
+
+    const result = await deleteTask(taskId);
+
+    if (!result.success) {
+      setError(result.error || 'Failed to delete task.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    closeModal();
+  };
+
   const isLoading = loading || projectsLoading || usersLoading;
 
   const priorityOptions = [
@@ -86,9 +107,9 @@ const EditTaskModal = ({ updateTask }) => {
       onConfirm={handleSubmit}
       confirmText={isLoading ? <><Loader2 className="animate-spin mr-2" size={16} /> Saving...</> : 'Save'}
       showCancel={!isLoading}
-      size="md"
+      size="lg"
     >
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-3">
         <input
           type="text"
           placeholder="Task title"
@@ -98,19 +119,11 @@ const EditTaskModal = ({ updateTask }) => {
           autoFocus
         />
 
-        <select
+        <ProjectSelect
+          projects={projects}
           value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 dark:text-gray-300"
-          disabled={projectsLoading}
-        >
-          <option value="">Select project...</option>
-          {projects.map(project => (
-            <option key={project.id || project._id} value={project.id || project._id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+          onChange={setTeamId}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-white/5 rounded-lg">
@@ -140,43 +153,44 @@ const EditTaskModal = ({ updateTask }) => {
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-          >
-            {showAdvanced ? 'Less options' : 'More options'}
-          </button>
         </div>
 
-        {showAdvanced && (
-          <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-white/5">
-            <textarea
-              rows="2"
-              placeholder="Add a description..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 placeholder-gray-400 dark:placeholder-gray-500 text-gray-700 dark:text-gray-300 resize-none"
-            />
+        <div className="space-y-3 pt-1">
+          <textarea
+            rows="2"
+            placeholder="Add a description..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 placeholder-gray-400 dark:placeholder-gray-500 text-gray-700 dark:text-gray-300 resize-none"
+          />
 
-            <div className="flex items-center gap-2">
-              <Users size={14} className="text-gray-400" />
-              <select
-                multiple
-                value={assignees}
-                onChange={(e) => setAssignees(Array.from(e.target.selectedOptions, opt => opt.value))}
-                className="flex-1 px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none text-gray-700 dark:text-gray-300 max-h-20"
-                disabled={usersLoading}
-              >
-                {allUsers.map(user => (
-                  <option key={user.id || user._id} value={user.id || user._id}>
-                    {user.username || user.name || user.email}
-                  </option>
-                ))}
-              </select>
+          <div className="flex items-center gap-2">
+            <Users size={14} className="text-gray-400" />
+            <div className="flex-1">
+              <UserMultiSelect
+                users={allUsers}
+                values={assignees}
+                onChange={setAssignees}
+                placeholder="Assign users..."
+              />
             </div>
           </div>
-        )}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="px-3 py-2 rounded-lg text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30 transition-colors"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Please wait…' : 'Delete task'}
+          </button>
+
+          <div className="text-xs text-gray-400">
+            {taskId ? `ID: ${taskId}` : ''}
+          </div>
+        </div>
 
         {error && (
           <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg">

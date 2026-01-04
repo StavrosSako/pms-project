@@ -16,6 +16,7 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activatingId, setActivatingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
   const [lastSeenAssignmentAt, setLastSeenAssignmentAt] = useState(0);
 
   const getAssignedAtMsForUser = (task) => {
@@ -72,6 +73,20 @@ export const useNotifications = () => {
       setError('Failed to activate user.');
     } finally {
       setActivatingId(null);
+    }
+  };
+
+  const rejectPendingUser = async (userId) => {
+    if (!isAdmin) return;
+    setRejectingId(userId);
+    setError(null);
+    try {
+      await userService.rejectPendingUser(userId);
+      await refreshPendingUsers();
+    } catch (err) {
+      setError('Failed to reject user.');
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -154,9 +169,11 @@ export const useNotifications = () => {
     unreadAssignedTasks,
     badgeCount,
     activatingId,
+    rejectingId,
     refreshPendingUsers,
     refreshAssignedTasks,
     activatePendingUser,
+    rejectPendingUser,
     markAssignmentsAsRead
   };
 };

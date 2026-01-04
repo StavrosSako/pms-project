@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MoreHorizontal, Calendar } from 'lucide-react';
+import { userAvatarGradient, userInitials, userDisplay } from './UserPicker';
 
 const getTaskId = (task) => task?.id || task?._id;
 
-export default function TaskCard({ task, onEdit, onDragStart }) {
+export default function TaskCard({ task, usersById, onEdit, onDragStart }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -38,6 +39,36 @@ export default function TaskCard({ task, onEdit, onDragStart }) {
     }
   };
 
+  const resolveUser = (userId) => {
+    const id = `${userId || ''}`;
+    if (!id) return null;
+    if (usersById && typeof usersById.get === 'function') {
+      return usersById.get(id) || null;
+    }
+    return null;
+  };
+
+  const Avatar = ({ user, fallbackId, size = 22 }) => {
+    const id = `${user?.id || user?._id || fallbackId || ''}`;
+    const gradient = userAvatarGradient(id);
+    const initials = user ? userInitials(user) : userInitials({ username: id });
+    const title = user ? (userDisplay(user) || id) : id;
+
+    return (
+      <div
+        className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold shadow-sm border-2 border-white dark:border-[#1e293b]`}
+        style={{ width: size, height: size }}
+        title={title}
+      >
+        <span style={{ fontSize: Math.max(8, Math.floor(size / 2.7)) }}>{initials}</span>
+      </div>
+    );
+  };
+
+  const assigneeIds = Array.isArray(task?.assignees)
+    ? task.assignees.map(a => (typeof a === 'string' ? a : a?.userId)).filter(Boolean)
+    : [];
+
   return (
     <div
       className="group relative p-4 mb-3 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing
@@ -55,9 +86,20 @@ export default function TaskCard({ task, onEdit, onDragStart }) {
 
       {/* Header */}
       <div className="flex justify-between items-start mb-3 pl-2">
-              <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md ${getPriorityBadge(task.priority)}`}>
-          {task.priority || 'Low'}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          {assigneeIds.length > 0 ? (
+            <div className="flex -space-x-2">
+              {assigneeIds.slice(0, 3).map((id, i) => (
+                <Avatar key={`${id}-${i}`} user={resolveUser(id)} fallbackId={id} />
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400">Unassigned</span>
+          )}
+          <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md ${getPriorityBadge(task.priority)}`}>
+            {task.priority || 'Low'}
+          </span>
+        </div>
 
         <div className="relative" ref={menuRef}>
           <button
@@ -99,23 +141,6 @@ export default function TaskCard({ task, onEdit, onDragStart }) {
              task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 
              task.date || 'No date'}
           </span>
-        </div>
-        
-        {/* Avatars */}
-        <div className="flex -space-x-2">
-          {task.assignees && task.assignees.length > 0 ? (
-            task.assignees.slice(0, 3).map((assignee, i) => (
-              <div 
-                key={i} 
-                className="w-6 h-6 rounded-full border-2 border-white dark:border-[#1e293b] bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-[8px] text-gray-500 dark:text-gray-300 font-bold"
-                title={assignee.username || assignee.name || 'Assignee'}
-              >
-                {assignee.username?.[0]?.toUpperCase() || assignee.name?.[0]?.toUpperCase() || 'U'}
-              </div>
-            ))
-          ) : (
-            <span className="text-xs text-gray-400">Unassigned</span>
-          )}
         </div>
       </div>
     </div>

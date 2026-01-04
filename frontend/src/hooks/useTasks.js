@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { taskService } from '../api/taskService';
 
 export const useTasks = (filters = {}) => {
@@ -30,7 +30,7 @@ export const useTasks = (filters = {}) => {
   const createTask = async (taskData) => {
     try {
       const newTask = await taskService.createTask(taskData);
-      setTasks([...tasks, newTask]);
+      setTasks(prev => [...prev, newTask]);
       return { success: true, data: newTask };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to create task' };
@@ -40,7 +40,7 @@ export const useTasks = (filters = {}) => {
   const updateTask = async (taskId, taskData) => {
     try {
       const updated = await taskService.updateTask(taskId, taskData);
-      setTasks(tasks.map(t => (getTaskId(t) === taskId ? updated : t)));
+      setTasks(prev => prev.map(t => (getTaskId(t) === taskId ? updated : t)));
       return { success: true, data: updated };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to update task' };
@@ -50,7 +50,7 @@ export const useTasks = (filters = {}) => {
   const updateTaskStatus = async (taskId, status) => {
     try {
       const updated = await taskService.updateTaskStatus(taskId, status);
-      setTasks(tasks.map(t => (getTaskId(t) === taskId ? updated : t)));
+      setTasks(prev => prev.map(t => (getTaskId(t) === taskId ? updated : t)));
       return { success: true, data: updated };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to update task status' };
@@ -60,7 +60,7 @@ export const useTasks = (filters = {}) => {
   const deleteTask = async (taskId) => {
     try {
       await taskService.deleteTask(taskId);
-      setTasks(tasks.filter(t => getTaskId(t) !== taskId));
+      setTasks(prev => prev.filter(t => getTaskId(t) !== taskId));
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to delete task' };
@@ -87,6 +87,18 @@ export const useTasks = (filters = {}) => {
     return grouped;
   };
 
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await taskService.getAllTasks(filters);
+      setTasks(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [JSON.stringify(filters)]);
+
   return { 
     tasks, 
     loading, 
@@ -96,17 +108,7 @@ export const useTasks = (filters = {}) => {
     updateTaskStatus,
     deleteTask,
     getTasksByStatus,
-    refetch: async () => {
-      setLoading(true);
-      try {
-        const data = await taskService.getAllTasks(filters);
-        setTasks(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
+    refetch
   };
 };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import TaskCard from './TaskCard';
 import { Plus, Loader2 } from 'lucide-react';
@@ -6,16 +6,84 @@ import { useTasks } from '../hooks/useTasks';
 import { useModal } from '../hooks/useModal';
 import CreateTaskModal from './CreateTaskModal';
 import EditTaskModal from './EditTaskModal';
+import { subscribeSse } from '../api/sseClient';
+import { useProjects } from '../hooks/useProjects';
+import { useAuth } from '../hooks/useAuth';
+import { useTeam } from '../hooks/useTeam';
+import { useMyTeams } from '../hooks/useMyTeams';
 
 export default function KanbanBoard() {
-  const { tasks, loading, error, getTasksByStatus, createTask, updateTask, updateTaskStatus } = useTasks();
-  const tasksByStatus = getTasksByStatus();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  const { projects } = useProjects();
+  const { members } = useTeam();
+  const { teams: myTeams } = useMyTeams();
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+
+  const taskFilters = selectedProjectId === 'all' ? {} : { teamId: selectedProjectId };
+
+  const { tasks, loading, error, createTask, updateTask, updateTaskStatus, deleteTask, refetch } = useTasks(taskFilters);
   const { openModal } = useModal();
 
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
 
   const getTaskId = (task) => task?.id || task?._id;
+
+  const getProjectId = (project) => project?.id || project?._id;
+  const myProjectIds = useMemo(() => {
+    const set = new Set();
+    for (const t of myTeams || []) {
+      const pid = `${t?.projectId || ''}`;
+      if (pid) set.add(pid);
+    }
+    return set;
+  }, [myTeams]);
+
+  const visibleProjects = isAdmin ? (projects || []) : (projects || []).filter(p => myProjectIds.has(`${getProjectId(p)}`));
+  const allowedProjectIds = new Set(visibleProjects.map(p => `${getProjectId(p)}`));
+
+  const canCreateForProject = useMemo(() => {
+    const pid = `${selectedProjectId || ''}`;
+    if (!pid || pid === 'all') return false;
+    if (isAdmin) return true;
+    const uid = `${user?.id || ''}`;
+    const team = (myTeams || []).find(t => `${t?.projectId || ''}` === pid);
+    if (!team) return false;
+    return (team?.members || []).some(m => `${m?.userId}` === uid && m?.role === 'TEAM_LEADER');
+  }, [isAdmin, myTeams, selectedProjectId, user]);
+
+  const usersById = useMemo(() => {
+    const map = new Map();
+    for (const u of members || []) {
+      const id = `${u?.id || u?._id || ''}`;
+      if (id) map.set(id, u);
+    }
+    return map;
+  }, [members]);
+
+  const displayTasks = isAdmin
+    ? (tasks || [])
+    : (tasks || []).filter(t => allowedProjectIds.has(`${t?.teamId}`));
+
+  const getTasksByStatus = (list) => {
+    const grouped = {
+      TODO: [],
+      IN_PROGRESS: [],
+      DONE: []
+    };
+
+    (list || []).forEach(task => {
+      const status = task.status?.toUpperCase?.() || 'TODO';
+      if (grouped[status]) grouped[status].push(task);
+      else grouped.TODO.push(task);
+    });
+
+    return grouped;
+  };
+
+  const tasksByStatus = getTasksByStatus(displayTasks);
 
   const columns = [
     {
@@ -36,7 +104,19 @@ export default function KanbanBoard() {
   ];
 
   const handleAddTask = (status) => {
-    openModal('createTask', { title: 'Create New Task', initialStatus: status });
+    if (!canCreateForProject) {
+      if (`${selectedProjectId}` === 'all') {
+        window.alert('Select a project first to create tasks.');
+      } else {
+        window.alert('Only the team leader of the assigned team can create tasks for this project.');
+      }
+      return;
+    }
+    openModal('createTask', {
+      title: 'Create New Task',
+      initialStatus: status,
+      initialTeamId: selectedProjectId === 'all' ? '' : selectedProjectId
+    });
   };
 
   const handleTaskDrop = async (taskId, newStatus) => {
@@ -47,6 +127,43 @@ export default function KanbanBoard() {
   const handleEditTask = (task) => {
     openModal('editTask', { title: 'Edit Task', task });
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let scheduled = null;
+    const scheduleRefetch = () => {
+      if (scheduled) return;
+      scheduled = setTimeout(async () => {
+        scheduled = null;
+        await refetch();
+      }, 200);
+    };
+
+    const unsubscribe = subscribeSse({
+      url: 'http://localhost:8083/api/notifications/stream',
+      token,
+      onEvent: (evt) => {
+        if (
+          evt.event === 'task_created' ||
+          evt.event === 'task_updated' ||
+          evt.event === 'task_status_changed' ||
+          evt.event === 'task_deleted'
+        ) {
+          scheduleRefetch();
+        }
+      },
+      onError: () => {
+        // Keep silent
+      }
+    });
+
+    return () => {
+      if (scheduled) clearTimeout(scheduled);
+      unsubscribe?.();
+    };
+  }, [refetch]);
 
   if (loading) {
     return (
@@ -66,6 +183,27 @@ export default function KanbanBoard() {
 
   return (
     <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+          Project
+        </div>
+        <select
+          value={selectedProjectId}
+          onChange={(e) => setSelectedProjectId(e.target.value)}
+          className="px-3 py-2 text-sm bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 dark:text-gray-300"
+        >
+          <option value="all">{isAdmin ? 'All projects' : 'All my projects'}</option>
+          {visibleProjects.map(p => {
+            const id = getProjectId(p);
+            return (
+              <option key={id} value={id}>
+                {p.name || p.title}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
       <div className="flex h-full gap-6 overflow-x-auto pb-4">
         {columns.map((col) => (
         <div
@@ -100,6 +238,7 @@ export default function KanbanBoard() {
             <div className="flex gap-1">
               <button 
                 onClick={() => handleAddTask(col.id)}
+                disabled={!canCreateForProject}
                 className="p-1 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-gray-500"
               >
                 <Plus size={18} />
@@ -114,6 +253,7 @@ export default function KanbanBoard() {
                 <TaskCard
                   task={task}
                   onEdit={handleEditTask}
+                  usersById={usersById}
                   onDragStart={(e, id) => {
                     setDraggedTaskId(id);
                     e.dataTransfer.effectAllowed = 'move';
@@ -126,7 +266,12 @@ export default function KanbanBoard() {
             {/* "Add Task" Ghost Button */}
             <button 
               onClick={() => handleAddTask(col.id)}
-              className="w-full py-2 flex items-center justify-center gap-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl border border-transparent hover:border-primary/20 border-dashed transition-all text-sm"
+              disabled={!canCreateForProject}
+              className={`w-full py-2 flex items-center justify-center gap-2 rounded-xl border border-transparent border-dashed transition-all text-sm ${
+                canCreateForProject
+                  ? 'text-gray-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20'
+                  : 'text-gray-500/50 cursor-not-allowed'
+              }`}
             >
               <Plus size={16} />
               <span>Add Task</span>
@@ -141,7 +286,7 @@ export default function KanbanBoard() {
       <CreateTaskModal createTask={createTask} />
 
       {/* Edit Task Modal */}
-      <EditTaskModal updateTask={updateTask} />
+      <EditTaskModal updateTask={updateTask} deleteTask={deleteTask} />
     </>
   );
 }

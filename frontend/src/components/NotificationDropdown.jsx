@@ -11,9 +11,11 @@ export default function NotificationDropdown() {
     unreadAssignedTasks,
     badgeCount,
     activatingId,
+    rejectingId,
     refreshPendingUsers,
     refreshAssignedTasks,
     activatePendingUser,
+    rejectPendingUser,
     markAssignmentsAsRead
   } = useNotifications();
 
@@ -94,25 +96,45 @@ export default function NotificationDropdown() {
                       <div>
                         <p className="text-sm font-medium text-gray-800 dark:text-white">{pUser.username}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{pUser.email}</p>
+                        <p className={`text-[11px] ${pUser.role === 'ADMIN' ? 'text-red-600 dark:text-red-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                          Requested role: <span className="font-semibold">{pUser.role}</span>
+                        </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => activatePendingUser(pUser.id)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
-                      disabled={!!activatingId}
-                    >
-                      {activatingId === pUser.id ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="animate-spin" size={14} />
-                          Activating
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-2">
-                          <CheckCircle2 size={14} />
-                          Accept
-                        </span>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => rejectPendingUser(pUser.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-300 transition-colors disabled:opacity-60"
+                        disabled={!!activatingId || !!rejectingId}
+                      >
+                        {rejectingId === pUser.id ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="animate-spin" size={14} />
+                            Rejecting
+                          </span>
+                        ) : (
+                          'Reject'
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => activatePendingUser(pUser.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
+                        disabled={!!activatingId || !!rejectingId}
+                      >
+                        {activatingId === pUser.id ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="animate-spin" size={14} />
+                            Activating
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-2">
+                            <CheckCircle2 size={14} />
+                            Accept
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (

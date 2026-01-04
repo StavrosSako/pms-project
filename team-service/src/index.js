@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db.js';
 import teamRoutes from './routes/teamRoutes.js';
+import projectRoutes from './routes/projectRoutes.js';
+import projectTeamRoutes from './routes/projectTeamRoutes.js';
 
 const app = express();
 
@@ -19,6 +21,8 @@ connectDB();
 
 // Routes
 app.use('/api/teams', teamRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/project-teams', projectTeamRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

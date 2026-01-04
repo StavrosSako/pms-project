@@ -81,6 +81,40 @@ export default function TeamMemberCard({ member }) {
           </div>
         </div>
 
+        {Array.isArray(member.projectMemberships) && (
+          <div className="mb-4">
+            <p className="text-[10px] uppercase text-gray-400 font-semibold tracking-wider mb-2">Projects</p>
+            {member.projectMemberships.length === 0 ? (
+              <div className="text-xs text-gray-500 dark:text-gray-400">No projects</div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {member.projectMemberships.slice(0, 4).map((pm) => {
+                  const isLeader = pm?.teamRole === 'TEAM_LEADER';
+                  return (
+                    <div
+                      key={`${pm.projectId}-${pm.teamRole}`}
+                      className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 dark:bg-white/5 dark:border-white/10"
+                      title={pm.projectName}
+                    >
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[130px]">
+                        {pm.projectName}
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isLeader ? 'bg-primary/10 text-primary' : 'bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-300'}`}>
+                        {isLeader ? 'Leader' : 'Member'}
+                      </span>
+                    </div>
+                  );
+                })}
+                {member.projectMemberships.length > 4 && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    +{member.projectMemberships.length - 4} more
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="mt-auto flex gap-2">
           <button className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all

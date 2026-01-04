@@ -1,5 +1,44 @@
 import Task from '../models/Task.js';
-import { sendToUser } from '../realtime/notificationHub.js';
+import { sendToAll, sendToUser } from '../realtime/notificationHub.js';
+
+const TEAM_SERVICE_URL = process.env.TEAM_SERVICE_URL || 'http://team-service:8082';
+
+const getBearerToken = (req) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) return '';
+  return auth.substring(7);
+};
+
+const fetchMyProjectTeams = async (token) => {
+  const res = await fetch(`${TEAM_SERVICE_URL}/api/project-teams/mine`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json'
+    }
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    const msg = text || `Failed to fetch teams (${res.status})`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+};
+
+const isLeaderForProject = (teams, userId, projectId) => {
+  const pid = `${projectId || ''}`;
+  const uid = `${userId || ''}`;
+  if (!pid || !uid) return false;
+
+  const team = (teams || []).find(t => `${t?.projectId || ''}` === pid);
+  if (!team) return false;
+
+  return (team?.members || []).some(m => `${m?.userId}` === uid && m?.role === 'TEAM_LEADER');
+};
 
 // Get all tasks (with optional filters)
 export const getAllTasks = async (req, res) => {
@@ -46,6 +85,25 @@ export const createTask = async (req, res) => {
       return res.status(400).json({ message: 'Title and teamId are required' });
     }
 
+    if (req.user?.role !== 'ADMIN') {
+      const token = getBearerToken(req);
+      if (!token) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      try {
+        const teams = await fetchMyProjectTeams(token);
+        const ok = isLeaderForProject(teams, req.user?.id, teamId);
+        if (!ok) {
+          return res.status(403).json({ message: 'Only the team leader of the assigned team can create tasks for this project' });
+        }
+      } catch (e) {
+        if (e?.status === 401) return res.status(401).json({ message: 'Authentication required' });
+        if (e?.status === 403) return res.status(403).json({ message: 'Insufficient permissions' });
+        return res.status(503).json({ message: 'Unable to validate team leadership right now' });
+      }
+    }
+
     const task = new Task({
       title,
       description: description || '',
@@ -58,6 +116,12 @@ export const createTask = async (req, res) => {
     });
 
     await task.save();
+
+    sendToAll('task_created', {
+      taskId: task._id?.toString?.() || task.id,
+      teamId: task.teamId
+    });
+
     res.status(201).json(task);
   } catch (error) {
     console.error('Error creating task:', error);
@@ -92,6 +156,12 @@ export const updateTask = async (req, res) => {
     if (assignees !== undefined) task.assignees = assignees;
 
     await task.save();
+
+    sendToAll('task_updated', {
+      taskId: task._id?.toString?.() || task.id,
+      teamId: task.teamId
+    });
+
     res.json(task);
   } catch (error) {
     console.error('Error updating task:', error);
@@ -116,6 +186,12 @@ export const updateTaskStatus = async (req, res) => {
 
     task.status = status;
     await task.save();
+
+    sendToAll('task_status_changed', {
+      taskId: task._id?.toString?.() || task.id,
+      teamId: task.teamId,
+      status: task.status
+    });
     
     res.json(task);
   } catch (error) {
@@ -138,7 +214,12 @@ export const deleteTask = async (req, res) => {
       return res.status(403).json({ message: 'Insufficient permissions to delete task' });
     }
 
+    const taskId = task._id?.toString?.() || task.id;
+    const teamId = task.teamId;
+
     await Task.findByIdAndDelete(req.params.id);
+
+    sendToAll('task_deleted', { taskId, teamId });
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
@@ -180,6 +261,11 @@ export const assignTask = async (req, res) => {
       status: task.status,
       teamId: task.teamId,
       assignedAt: lastAssignee?.assignedAt
+    });
+
+    sendToAll('task_updated', {
+      taskId: task._id?.toString?.() || task.id,
+      teamId: task.teamId
     });
 
     res.json(task);

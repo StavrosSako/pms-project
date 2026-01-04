@@ -67,10 +67,6 @@ Then open http://localhost:5173 in your browser.
 2. **Activate the user** (see TESTING_GUIDE.md for details)
 3. **Login** and start using the application
 
-## Documentation
-
-- See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for detailed testing instructions
-- API endpoints are documented in each service's route files
 
 ## Tech Stack
 

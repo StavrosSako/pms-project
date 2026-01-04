@@ -23,6 +23,11 @@ export const userService = {
     return response.data;
   },
 
+  rejectPendingUser: async (userId) => {
+    const response = await userClient.delete(`/api/users/pending/${userId}`);
+    return response.data;
+  },
+
   // Get current user info
   getCurrentUser: async () => {
     // Get from localStorage or verify with backend

@@ -6,12 +6,14 @@ export const useProjects = (filters = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const getProjectId = (project) => project?.id || project?._id;
+
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await teamService.getAllTeams();
+        const data = await teamService.getAllProjects();
         setProjects(data);
       } catch (err) {
         console.error('Error fetching projects:', err);
@@ -28,8 +30,8 @@ export const useProjects = (filters = {}) => {
 
   const createProject = async (projectData) => {
     try {
-      const newProject = await teamService.createTeam(projectData);
-      setProjects([...projects, newProject]);
+      const newProject = await teamService.createProject(projectData);
+      setProjects(prev => [...prev, newProject]);
       return { success: true, data: newProject };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to create project' };
@@ -38,8 +40,8 @@ export const useProjects = (filters = {}) => {
 
   const updateProject = async (projectId, projectData) => {
     try {
-      const updated = await teamService.updateTeam(projectId, projectData);
-      setProjects(projects.map(p => p.id === projectId ? updated : p));
+      const updated = await teamService.updateProject(projectId, projectData);
+      setProjects(prev => prev.map(p => (getProjectId(p) === projectId ? updated : p)));
       return { success: true, data: updated };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to update project' };
@@ -48,8 +50,8 @@ export const useProjects = (filters = {}) => {
 
   const deleteProject = async (projectId) => {
     try {
-      await teamService.deleteTeam(projectId);
-      setProjects(projects.filter(p => p.id !== projectId));
+      await teamService.deleteProject(projectId);
+      setProjects(prev => prev.filter(p => getProjectId(p) !== projectId));
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Failed to delete project' };
@@ -66,7 +68,7 @@ export const useProjects = (filters = {}) => {
     refetch: async () => {
       setLoading(true);
       try {
-        const data = await teamService.getAllTeams();
+        const data = await teamService.getAllProjects();
         setProjects(data);
       } catch (err) {
         setError(err.message);

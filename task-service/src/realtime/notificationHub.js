@@ -19,6 +19,21 @@ export const removeSubscriber = (userId, res) => {
   if (set.size === 0) subscribersByUserId.delete(userId);
 };
 
+export const sendToAll = (event, data) => {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const [userId, set] of subscribersByUserId.entries()) {
+    for (const res of set) {
+      try {
+        res.write(payload);
+      } catch (_) {
+        set.delete(res);
+      }
+    }
+
+    if (set.size === 0) subscribersByUserId.delete(userId);
+  }
+};
+
 export const sendToUser = (userId, event, data) => {
   const set = subscribersByUserId.get(userId);
   if (!set) return;

@@ -4,13 +4,21 @@ import { Modal } from '../components/Modal.jsx';
 import { Loader2, Calendar, Users } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
 import { useTeam } from '../hooks/useTeam';
+import ProjectSelect from '../components/ProjectSelect';
+import { UserMultiSelect } from '../components/UserPicker';
+import { useAuth } from '../hooks/useAuth';
+import { useMyTeams } from '../hooks/useMyTeams';
 
 const CreateTaskModal = ({ createTask }) => {
   const { modalProps, closeModal } = useModal();
   const initialStatus = modalProps.initialStatus || 'TODO';
+  const initialTeamId = modalProps.initialTeamId || '';
 
   const { projects, loading: projectsLoading } = useProjects();
   const { members: allUsers, loading: usersLoading } = useTeam();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const { teams: myTeams } = useMyTeams();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -21,19 +29,36 @@ const CreateTaskModal = ({ createTask }) => {
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const getProjectId = (p) => p?.id || p?._id;
+  const leaderProjectIds = React.useMemo(() => {
+    if (isAdmin) return new Set();
+    const set = new Set();
+    const uid = `${user?.id || ''}`;
+    for (const t of myTeams || []) {
+      const pid = `${t?.projectId || ''}`;
+      if (!pid) continue;
+      const isLeader = (t?.members || []).some(m => `${m?.userId}` === uid && m?.role === 'TEAM_LEADER');
+      if (isLeader) set.add(pid);
+    }
+    return set;
+  }, [isAdmin, myTeams, user]);
+
+  const selectableProjects = React.useMemo(() => {
+    if (isAdmin) return projects || [];
+    return (projects || []).filter(p => leaderProjectIds.has(`${getProjectId(p)}`));
+  }, [isAdmin, leaderProjectIds, projects]);
 
   useEffect(() => {
     setStatus(initialStatus);
     setTitle('');
     setDescription('');
     setPriority('Medium');
-    setTeamId('');
+    setTeamId(initialTeamId);
     setAssignees([]);
     setDueDate('');
     setError(null);
-    setShowAdvanced(false);
-  }, [initialStatus, modalProps]);
+  }, [initialStatus, initialTeamId, modalProps]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -82,9 +107,9 @@ const CreateTaskModal = ({ createTask }) => {
       onConfirm={handleSubmit} 
       confirmText={isLoading ? <><Loader2 className="animate-spin mr-2" size={16} /> Creating...</> : "Create"} 
       showCancel={!isLoading}
-      size="md"
+      size="lg"
     >
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-3">
         {/* Task Title - Main Focus */}
         <input
           type="text"
@@ -96,19 +121,11 @@ const CreateTaskModal = ({ createTask }) => {
         />
 
         {/* Project Select - Required */}
-        <select
+        <ProjectSelect
+          projects={selectableProjects}
           value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 text-gray-700 dark:text-gray-300"
-          disabled={projectsLoading}
-        >
-          <option value="">Select project...</option>
-          {projects.map(project => (
-            <option key={project.id || project._id} value={project.id || project._id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+          onChange={setTeamId}
+        />
 
         {/* Quick Options Row */}
         <div className="flex flex-wrap items-center gap-2">
@@ -141,47 +158,29 @@ const CreateTaskModal = ({ createTask }) => {
             />
           </div>
 
-          {/* Toggle Advanced */}
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-          >
-            {showAdvanced ? 'Less options' : 'More options'}
-          </button>
         </div>
 
-        {/* Advanced Options - Collapsible */}
-        {showAdvanced && (
-          <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-white/5">
-            {/* Description */}
-            <textarea
-              rows="2"
-              placeholder="Add a description..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 placeholder-gray-400 dark:placeholder-gray-500 text-gray-700 dark:text-gray-300 resize-none"
-            />
+        <div className="space-y-3 pt-1">
+          <textarea
+            rows="2"
+            placeholder="Add a description..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 placeholder-gray-400 dark:placeholder-gray-500 text-gray-700 dark:text-gray-300 resize-none"
+          />
 
-            {/* Assignees */}
-            <div className="flex items-center gap-2">
-              <Users size={14} className="text-gray-400" />
-              <select
-                multiple
-                value={assignees}
-                onChange={(e) => setAssignees(Array.from(e.target.selectedOptions, opt => opt.value))}
-                className="flex-1 px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg outline-none text-gray-700 dark:text-gray-300 max-h-20"
-                disabled={usersLoading}
-              >
-                {allUsers.map(user => (
-                  <option key={user.id || user._id} value={user.id || user._id}>
-                    {user.username || user.name || user.email}
-                  </option>
-                ))}
-              </select>
+          <div className="flex items-center gap-2">
+            <Users size={14} className="text-gray-400" />
+            <div className="flex-1">
+              <UserMultiSelect
+                users={allUsers}
+                values={assignees}
+                onChange={setAssignees}
+                placeholder="Assign users..."
+              />
             </div>
           </div>
-        )}
+        </div>
 
         {/* Error */}
         {error && (

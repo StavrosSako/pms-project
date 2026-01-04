@@ -158,6 +158,23 @@ export const activateUser = async (req, res) => {
     }
 };
 
+// Reject (delete) a pending user
+export const rejectUser = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [result] = await db.query('DELETE FROM users WHERE id = ? AND is_active = 0', [id]);
+
+        if (!result?.affectedRows) {
+            return res.status(404).json({ message: 'Pending user not found' });
+        }
+
+        sendToRole('ADMIN', 'pending_resolved', { id, action: 'rejected' });
+        res.json({ message: 'User rejected successfully!' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error rejecting user' });
+    }
+};
+
 // Get all users (for admin/team management)
 export const getAllUsers = async (req, res) => {
     try {

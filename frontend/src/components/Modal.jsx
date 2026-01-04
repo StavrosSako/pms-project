@@ -94,7 +94,7 @@ export const Modal = ({ id, children, title, size = 'md', onConfirm, onClose, sh
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -50, opacity: 0, scale: 0.95 }}
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className={`relative w-full ${getWidthClass()} bg-background dark:bg-dark-bg rounded-2xl shadow-xl border border-gray-200 dark:border-white/10 p-6 flex flex-col`}
+            className={`relative w-full ${getWidthClass()} max-h-[90vh] bg-background dark:bg-dark-bg rounded-2xl shadow-xl border border-gray-200 dark:border-white/10 p-6 flex flex-col`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -106,7 +106,7 @@ export const Modal = ({ id, children, title, size = 'md', onConfirm, onClose, sh
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto mb-6 text-text-main dark:text-dark-text">
+            <div className="flex-1 overflow-visible mb-6 text-text-main dark:text-dark-text">
               {children || modalProps.content}
             </div>
 
