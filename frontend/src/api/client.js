@@ -1,16 +1,41 @@
 import axios from 'axios';
 
-// This points to your User Service running in Docker on port 8080
-const client = axios.create({
-  baseURL: 'http://localhost:8080', 
-  headers: { 'Content-Type': 'application/json' }
-});
+// Base client configuration
+const createClient = (baseURL) => {
+  const client = axios.create({
+    baseURL,
+    headers: { 'Content-Type': 'application/json' }
+  });
 
-// This automatically adds the JWT token to requests if we are logged in
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+  // Add JWT token to all requests
+  client.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
 
-export default client;
+  // Handle errors globally
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
+};
+
+// Service-specific clients
+export const userClient = createClient('http://localhost:8080');
+export const teamClient = createClient('http://localhost:8082');
+export const taskClient = createClient('http://localhost:8083');
+
+export default userClient;

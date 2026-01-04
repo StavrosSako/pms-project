@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle'; 
+import { useAuth } from '../hooks/useAuth'; 
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -14,22 +17,20 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
-
-    try {
-      // This will be replaced with our user-service API call (Port 8080)
-      console.log('Attempting login with custom microservice...');
-      
-      // Placeholder logic for now
-      if (email === "test@tuc.gr" && password === "password") {
-         navigate('/dashboard');
+    
+    const result = await login(email, password);
+    
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      if (result.error?.includes('pending') || result.error?.includes('activation')) {
+        setErrorMsg("Your account is pending admin activation.");
       } else {
-         setErrorMsg("Invalid credentials or account not activated by Admin.");
+        setErrorMsg(result.error || "Login failed: Server error");
       }
-    } catch (err) {
-      setErrorMsg("Failed to connect to User Service.");
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   return (
@@ -87,7 +88,7 @@ export default function Login() {
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm font-medium text-center">
+            <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm font-medium text-center animate-fade-in">
               {errorMsg}
             </div>
           )}
@@ -100,7 +101,14 @@ export default function Login() {
                        dark:bg-gradient-to-r dark:from-dark-btnStart dark:to-dark-btnEnd
                        disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing In...' : 'Sign In \u2192'}
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                <span>Signing In...</span>
+              </>
+            ) : (
+              'Sign In \u2192'
+            )}
           </button>
 
           {/* NEW: LINK TO SIGNUP */}

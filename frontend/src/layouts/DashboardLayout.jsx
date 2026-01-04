@@ -1,9 +1,28 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
 import ThemeToggle from '../components/ThemeToggle';
-import { Search, Bell } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import NotificationDropdown from '../components/NotificationDropdown';
+
+const toTitleCase = (value) => {
+  if (!value) return '';
+  return value
+    .toString()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
 
 export default function DashboardLayout({ children }) {
+  const { user } = useAuth();
+
+  const displayName = toTitleCase(
+    `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'User'
+  );
+
   return (
     //  OUTER CONTAINER: Fixed height (h-screen), No Window Scroll (overflow-hidden)
     <div className="h-screen w-full overflow-hidden flex transition-colors duration-500 
@@ -36,15 +55,12 @@ export default function DashboardLayout({ children }) {
 
           {/* Right Actions */}
           <div className="flex items-center gap-6">
-            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors dark:text-gray-400 dark:hover:bg-white/10">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-surface dark:border-gray-900"></span>
-            </button>
+            {user && <NotificationDropdown />}
             <ThemeToggle />
             <div className="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-white/10">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-semibold dark:text-white">Stavros Sako</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Student ID: 2024099</p>
+                <p className="text-sm font-semibold dark:text-white">{displayName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">UserID: {user?.userUid || '—'}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border-2 border-white dark:border-white/20 shadow-md"></div>
             </div>

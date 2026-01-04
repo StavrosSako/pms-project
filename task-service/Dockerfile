@@ -1,17 +1,14 @@
-# Use Node.js LTS version
-FROM node:20
+FROM node:20-alpine
 
-# Create app directory
 WORKDIR /app
 
-# Copy package files and install dependencies
 COPY package*.json ./
+
 RUN npm install
 
-# Copy the rest of the code
 COPY . .
 
-# The port will be injected from docker-compose
 EXPOSE 8083
 
-CMD [ "node", "index.js" ]
+CMD ["npm", "start"]
+

@@ -1,19 +1,14 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { User, Bell, Lock, Camera, Save, Mail, Shield } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { userService } from '../api/userService';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
 
-  // Render content based on tab
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'profile': return <ProfileSettings />;
-      case 'notifications': return <NotificationSettings />;
-      case 'security': return <SecuritySettings />;
-      default: return <ProfileSettings />;
-    }
-  };
 
   return (
     <DashboardLayout>
@@ -46,7 +41,9 @@ export default function Settings() {
 
         {/* Main Content Card */}
         <div className="flex-1 w-full bg-white dark:bg-[#1e293b]/60 dark:backdrop-blur-md border border-gray-200 dark:border-white/5 rounded-3xl p-8 shadow-sm">
-          {renderContent()}
+          {activeTab === 'profile' && <ProfileSettings user={user} onSave={() => {}} />}
+          {activeTab === 'notifications' && <NotificationSettings />}
+          {activeTab === 'security' && <SecuritySettings />}
         </div>
 
       </div>
@@ -56,7 +53,30 @@ export default function Settings() {
 
 // SUB-COMPONENTS 
 
-const ProfileSettings = () => (
+const ProfileSettings = ({ user, onSave }) => {
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    username: user?.username || ''
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (user?.id) {
+        await userService.updateProfile(user.id, formData);
+        alert('Profile updated successfully!');
+      }
+    } catch (error) {
+      alert('Failed to update profile: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
   <div className="space-y-8 animate-fade-in">
     
     {/* Header Section with Avatar */}
@@ -66,7 +86,9 @@ const ProfileSettings = () => (
       <div className="relative group">
         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent p-1 shadow-xl shadow-primary/20">
           <div className="w-full h-full rounded-full bg-white dark:bg-[#0f172a] flex items-center justify-center overflow-hidden relative">
-            <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-primary to-accent">AM</span>
+            <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-primary to-accent">
+              {user?.username?.[0]?.toUpperCase() || user?.firstName?.[0]?.toUpperCase() || 'U'}{user?.lastName?.[0]?.toUpperCase() || ''}
+            </span>
             
             {/* Hover Overlay */}
             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
@@ -78,31 +100,58 @@ const ProfileSettings = () => (
       </div>
 
       <div className="text-center sm:text-left">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Alex Morgan</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Student ID: 2024099</p>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'User'}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Email: {user?.email || 'N/A'}</p>
         <div className="flex gap-2 justify-center sm:justify-start">
-           <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">Team Leader</span>
+           <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">{user?.role || 'MEMBER'}</span>
         </div>
       </div>
     </div>
 
     {/* Form Inputs */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <InputGroup label="Full Name" value="Alex Morgan" icon={<User size={16} />} />
-      <InputGroup label="Student ID" value="2024099" icon={<Shield size={16} />} disabled />
-      <InputGroup label="Email Address" value="alex.m@tuc.gr" icon={<Mail size={16} />} />
-      <InputGroup label="Department" value="Computer Science" disabled />
+      <InputGroup 
+        label="First Name" 
+        value={formData.firstName}
+        onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+        icon={<User size={16} />} 
+      />
+      <InputGroup 
+        label="Last Name" 
+        value={formData.lastName}
+        onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+        icon={<User size={16} />} 
+      />
+      <InputGroup 
+        label="Username" 
+        value={formData.username}
+        onChange={(e) => setFormData({...formData, username: e.target.value})}
+        icon={<Shield size={16} />} 
+      />
+      <InputGroup 
+        label="Email Address" 
+        value={formData.email}
+        onChange={(e) => setFormData({...formData, email: e.target.value})}
+        icon={<Mail size={16} />} 
+      />
     </div>
 
     <div className="pt-6 flex justify-end">
-      <button className="flex items-center gap-2 px-8 py-3 rounded-xl text-white font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all
-        bg-gradient-to-r from-primary to-accent">
+      <button 
+        onClick={handleSave}
+        disabled={saving}
+        className="flex items-center gap-2 px-8 py-3 rounded-xl text-white font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+          bg-gradient-to-r from-primary to-accent"
+      >
         <Save size={18} />
-        Save Changes
+        {saving ? 'Saving...' : 'Save Changes'}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 const NotificationSettings = () => (
   <div className="space-y-6 animate-fade-in">
@@ -145,7 +194,7 @@ const SecuritySettings = () => (
 
 // --- HELPER COMPONENTS ---
 
-const InputGroup = ({ label, type = "text", value, placeholder, disabled, icon }) => (
+const InputGroup = ({ label, type = "text", value, placeholder, disabled, icon, onChange }) => (
   <div className="space-y-2">
     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">{label}</label>
     <div className="relative group">
@@ -154,7 +203,8 @@ const InputGroup = ({ label, type = "text", value, placeholder, disabled, icon }
       </div>
       <input 
         type={type} 
-        defaultValue={value}
+        value={value}
+        onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
         className={`w-full pl-11 pr-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium

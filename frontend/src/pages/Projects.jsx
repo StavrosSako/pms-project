@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { Search, Filter, MoreHorizontal, Calendar, Plus, LayoutGrid, List, Clock, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Calendar, Plus, LayoutGrid, List, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { useProjects } from '../hooks/useProjects';
+import { useModal } from '../hooks/useModal';
+import { Modal } from '../components/Modal';
+import { Input } from '../components/UI';
+import CreateProjectModal from '../components/CreateProjectModal';
 
 export default function Projects() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filter, setFilter] = useState('All');
-
-  // Dummy Data just to be able to see how everything looks 
-  const projects = [
-    { id: 1, name: "AI Research Model", client: "Data Science", team: [2,5], status: "Active", progress: 60, due: "Nov 25", desc: "Training the new LLM on university datasets." },
-
-  ];
+  const [searchTerm, setSearchTerm] = useState('');
+  const { projects, loading, error, createProject } = useProjects();
+  const { openModal } = useModal();
 
   // Helper: Status Colors
   const getStatusColor = (status) => {
@@ -22,11 +24,19 @@ export default function Projects() {
     }
   };
 
-  // Filter Logic
-  const filteredProjects = filter === 'All' ? projects : projects.filter(p => p.status === filter);
+  // Filter and search logic
+  const filteredProjects = projects
+    .filter(p => {
+      const matchesFilter = filter === 'All' || p.status === filter;
+      const matchesSearch = !searchTerm || 
+        p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
 
   return (
-    <DashboardLayout>
+    <>
+      <DashboardLayout>
       
       {/* 1. Header & Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -52,10 +62,29 @@ export default function Projects() {
             </button>
           </div>
 
-          <button className="px-4 py-2 rounded-xl text-white text-sm font-medium shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-accent">
+          <button 
+            onClick={() => openModal('createProject', { title: 'Create New Project' })}
+            className="px-4 py-2 rounded-xl text-white text-sm font-medium shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-accent"
+          >
             <Plus size={18} />
             <span>New Project</span>
           </button>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-xl border outline-none focus:ring-2 focus:ring-primary/20 transition-all
+              bg-white border-gray-200 text-gray-800 placeholder-gray-400
+              dark:bg-[#0f172a] dark:border-gray-700 dark:text-white dark:placeholder-gray-500"
+          />
         </div>
       </div>
 
@@ -80,7 +109,19 @@ export default function Projects() {
       </div>
 
       {/* 3. CONTENT AREA */}
-      {viewMode === 'list' ? (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      ) : error ? (
+        <div className="p-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-center">
+          Error loading projects: {error}
+        </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="p-8 rounded-xl bg-gray-50 dark:bg-white/5 text-center text-gray-500 dark:text-gray-400">
+          {searchTerm || filter !== 'All' ? 'No projects match your filters' : 'No projects yet. Create one to get started!'}
+        </div>
+      ) : viewMode === 'list' ? (
         
         /* LIST VIEW */
         <div className="w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl">
@@ -100,14 +141,20 @@ export default function Projects() {
                 {filteredProjects.map((project) => (
                   <tr key={project.id} className="group hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
                     <td className="p-4">
-                      <div className="font-semibold text-gray-800 dark:text-white">{project.name}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{project.client}</div>
+                      <div className="font-semibold text-gray-800 dark:text-white">{project.name || project.title}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{project.description || project.client || 'No description'}</div>
                     </td>
                     <td className="p-4">
                       <div className="flex -space-x-2">
-                        {project.team.map((m, i) => (
-                          <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-[#1e293b] bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-300">M{m}</div>
-                        ))}
+                        {project.members && project.members.length > 0 ? (
+                          project.members.slice(0, 3).map((member, i) => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-[#1e293b] bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-300">
+                              {member.username?.[0]?.toUpperCase() || member.name?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400">No members</span>
+                        )}
                       </div>
                     </td>
                     <td className="p-4">
@@ -116,15 +163,15 @@ export default function Projects() {
                     <td className="p-4 w-48">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${project.progress}%` }}></div>
+                          <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${project.progress || 0}%` }}></div>
                         </div>
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{project.progress}%</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{project.progress || 0}%</span>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <Calendar size={14} />
-                        <span>{project.due}</span>
+                        <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : project.due || 'No due date'}</span>
                       </div>
                     </td>
                     <td className="p-4 text-right">
@@ -153,8 +200,8 @@ export default function Projects() {
               </div>
 
               {/* Title & Desc */}
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1">{project.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">{project.desc}</p>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1">{project.name || project.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">{project.description || project.desc || 'No description'}</p>
 
               {/* Progress */}
               <div className="mb-4">
@@ -170,13 +217,19 @@ export default function Projects() {
               {/* Footer */}
               <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-white/10">
                 <div className="flex -space-x-2">
-                  {project.team.map((m, i) => (
-                    <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-[#1e293b] bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-[9px] font-bold text-gray-500 dark:text-gray-300">M{m}</div>
-                  ))}
+                  {project.members && project.members.length > 0 ? (
+                    project.members.slice(0, 3).map((member, i) => (
+                      <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-[#1e293b] bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-[9px] font-bold text-gray-500 dark:text-gray-300">
+                        {member.username?.[0]?.toUpperCase() || member.name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">No members</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/5 px-2.5 py-1 rounded-full">
                   <Calendar size={12} />
-                  <span>{project.due}</span>
+                  <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : project.due || 'No date'}</span>
                 </div>
               </div>
 
@@ -186,5 +239,9 @@ export default function Projects() {
       )}
 
     </DashboardLayout>
+
+    {/* Create Project Modal */}
+    <CreateProjectModal createProject={createProject} />
+    </>
   );
 }

@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import TeamMemberCard from '../components/TeamMemberCard';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader2 } from 'lucide-react';
+import { useTeam } from '../hooks/useTeam';
 
 export default function Team() {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const members = [
-    { id: 1, name: "LOLIS K.", role: "Team Leader", studentId: "2024099", dept: "Computer Science", status: "online", bannerColor: "from-blue-500 to-cyan-400" },
-    { id: 2, name: "Kostas K.", role: "Full Stack Dev", studentId: "2024102", dept: "Software Eng", status: "offline", bannerColor: "from-purple-500 to-pink-400" },
-    { id: 3, name: "Stavros L.", role: "UI/UX Designer", studentId: "2024155", dept: "Product Design", status: "busy", bannerColor: "from-orange-400 to-amber-300" },
-    { id: 4, name: "Dimitris P.", role: "Backend Dev", studentId: "2024008", dept: "Computer Science", status: "online", bannerColor: "from-emerald-500 to-teal-400" },
-    { id: 5, name: "Elena K.", role: "QA Tester", studentId: "2024221", dept: "Info Systems", status: "offline", bannerColor: "from-indigo-500 to-blue-400" },
-    { id: 6, name: "Makis K.", role: "DevOps Eng", studentId: "2024111", dept: "Network Eng", status: "online", bannerColor: "from-slate-600 to-slate-500" },
-  ];
+  const { members, loading, error } = useTeam();
 
   const filtered = members.filter(m => 
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.studentId.includes(searchTerm)
+    m.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    m.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.studentId?.includes(searchTerm)
   );
 
   return (
@@ -54,11 +50,25 @@ export default function Team() {
       </div>
 
       {/* The Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filtered.map(member => (
-          <TeamMemberCard key={member.id} member={member} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      ) : error ? (
+        <div className="p-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-center">
+          Error loading team members: {error}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="p-8 rounded-xl bg-gray-50 dark:bg-white/5 text-center text-gray-500 dark:text-gray-400">
+          {searchTerm ? 'No members match your search' : 'No team members found'}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filtered.map(member => (
+            <TeamMemberCard key={member.id || member._id} member={member} />
+          ))}
+        </div>
+      )}
 
     </DashboardLayout>
   );

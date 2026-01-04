@@ -1,5 +1,5 @@
 services:
-  # MySQL Database
+  # MySQL Database for User Management
   user-db:
     image: mysql:8.0
     container_name: user-db
@@ -8,24 +8,43 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: user_db
     ports:
-      - "3307:3306"
+      - "3307:3306" # External: 3307, Internal: 3306
+    volumes:
+      - user_db_data:/var/lib/mysql
+    networks:
+      - pms-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
 
-  # MongoDB Database
+  # MongoDB Database for Team and Task Services
   mongodb:
     image: mongo
     container_name: mongodb
     restart: always
     ports:
       - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - pms-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
 
-  # User Service
+  # Part 1: User Management API (MySQL)
   user-service:
     build: ./user-service
     container_name: user-service
     ports:
       - "8080:8080"
     depends_on:
-      - user-db
+      user-db:
+        condition: service_healthy
     environment:
       - DB_HOST=user-db
       - DB_PORT=3306
@@ -33,27 +52,56 @@ services:
       - DB_PASS=rootpassword
       - DB_NAME=user_db
       - JWT_SECRET=my_super_secret_key_123
+    networks:
+      - pms-network
 
-  # Team Service
+  # Part 2: Team Management API (MongoDB)
   team-service:
     build: ./team-service
     container_name: team-service
     ports:
       - "8082:8082"
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     environment:
       - MONGO_URI=mongodb://mongodb:27017/team_db
       - JWT_SECRET=my_super_secret_key_123
+    networks:
+      - pms-network
 
-  # Task Service
+  # Part 3: Task Management API (MongoDB)
   task-service:
     build: ./task-service
     container_name: task-service
     ports:
       - "8083:8083"
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     environment:
       - MONGO_URI=mongodb://mongodb:27017/task_db
       - JWT_SECRET=my_super_secret_key_123
+    networks:
+      - pms-network
+
+  # Part 4: Frontend / UI Service (React/Vite)
+  frontend:
+    build: ./frontend
+    container_name: frontend-ui
+    ports:
+      - "5173:5173"
+    depends_on:
+      - user-service
+      - team-service
+      - task-service
+    networks:
+      - pms-network
+
+networks:
+  pms-network:
+    driver: bridge
+
+volumes:
+  user_db_data:
+  mongo_data:

@@ -1,19 +1,19 @@
 import React from 'react';
 import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
+import { useAuth } from '../hooks/useAuth';
 
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate(); 
+  const { user } = useAuth(); // Get user from auth hook
 
   // Inside Sidebar.jsx
   const handleLogout = async () => {
-    // 1. Clear the JWT from localStorage (our new microservice auth method)
-    localStorage.removeItem('pms_token'); 
-    
-    // 2. Redirect the user back to the login page (root path)
-    navigate('/'); 
+      localStorage.removeItem('token');
+      localStorage.removeItem('user'); 
+      window.location.href = '/'; // Redirect to login
   };
 
   const menuItems = [

@@ -8,7 +8,7 @@ export default function ProtectedRoute() {
 
   useEffect(() => {
     // Check if a JWT token exists in local storage
-    const token = localStorage.getItem('pms_token');
+    const token = localStorage.getItem('token');
     
     if (token) {
       // For now, if a token exists, we consider them logged in.

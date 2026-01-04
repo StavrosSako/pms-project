@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import ThemeToggle from '../components/ThemeToggle'; 
+import { Loader2 } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
+import { userService } from '../api/userService'; 
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -28,16 +30,11 @@ export default function Signup() {
     setSuccessMsg('');
 
     try {
-      // Future connection to user-service:8080 
-      console.log('Registering user with status: INACTIVE', formData);
-      
-      // Success simulation reflecting Admin activation requirement 
+      await userService.signup(formData);
       setSuccessMsg("Registration successful! Your account is pending Admin activation.");
-      
-      // Redirect back to login after a delay
       setTimeout(() => navigate('/'), 3000); 
     } catch (err) {
-      setErrorMsg("Connection to User Service failed.");
+      setErrorMsg(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -140,7 +137,14 @@ export default function Signup() {
                        dark:bg-gradient-to-r dark:from-dark-btnStart dark:to-dark-btnEnd
                        disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating Account...' : 'Register \u2192'}
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                <span>Creating Account...</span>
+              </>
+            ) : (
+              'Register \u2192'
+            )}
           </button>
 
           {/* Link back to Login */}
