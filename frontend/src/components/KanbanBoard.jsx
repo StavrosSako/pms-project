@@ -16,7 +16,7 @@ export default function KanbanBoard({ projectId }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const { members } = useTeam();
-  const { teams: myTeams } = useMyTeams();
+  const { teams: myTeams, loading: myTeamsLoading } = useMyTeams();
 
   const [adminProjectTeams, setAdminProjectTeams] = useState([]);
 
@@ -30,11 +30,13 @@ export default function KanbanBoard({ projectId }) {
       return (adminProjectTeams || []).some(t => normalize(t?.projectId) === pid);
     }
 
+    if (myTeamsLoading) return null;
+
     return (myTeams || []).some(t => normalize(t?.projectId) === pid);
-  }, [adminProjectTeams, isAdmin, myTeams, projectId]);
+  }, [adminProjectTeams, isAdmin, myTeams, myTeamsLoading, projectId]);
 
   const taskFilters = projectId
-    ? { teamId: hasAssignedTeam ? projectId : '__no_assigned_team__' }
+    ? { teamId: hasAssignedTeam === false ? '__no_assigned_team__' : projectId }
     : { teamId: '__no_project_selected__' };
 
   const { tasks, loading, error, createTask, updateTask, updateTaskStatus, deleteTask, refetch } = useTasks(
@@ -108,6 +110,8 @@ export default function KanbanBoard({ projectId }) {
     if (!canCreateForProject) {
       if (!projectId) {
         window.alert('Select a project first to create tasks.');
+      } else if (!isAdmin && myTeamsLoading) {
+        window.alert('Loading team information. Please wait a moment and try again.');
       } else if (!hasAssignedTeam) {
         window.alert('This project has no team assigned. Assign a team to this project before creating tasks.');
       } else {

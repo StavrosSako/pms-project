@@ -19,7 +19,7 @@ const CreateTaskModal = ({ createTask }) => {
   const { members: allUsers, loading: usersLoading } = useTeam();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const { teams: myTeams } = useMyTeams();
+  const { teams: myTeams, loading: myTeamsLoading } = useMyTeams();
 
   const [adminProjectTeams, setAdminProjectTeams] = useState([]);
 
@@ -32,6 +32,8 @@ const CreateTaskModal = ({ createTask }) => {
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const isProjectLocked = !!initialTeamId;
 
   const getProjectId = (p) => p?.id || p?._id;
   const leaderProjectIds = React.useMemo(() => {
@@ -78,22 +80,25 @@ const CreateTaskModal = ({ createTask }) => {
     const pid = normalize(teamId);
     if (!pid) return [];
 
+    if (!isAdmin && myTeamsLoading) return null;
+
     const team = isAdmin
       ? (adminProjectTeams || []).find(t => normalize(t?.projectId) === pid)
       : (myTeams || []).find(t => normalize(t?.projectId) === pid);
 
     const ids = (team?.members || []).map(m => normalize(m?.userId)).filter(Boolean);
     return Array.from(new Set(ids));
-  }, [adminProjectTeams, isAdmin, myTeams, teamId]);
+  }, [adminProjectTeams, isAdmin, myTeams, myTeamsLoading, teamId]);
 
   const eligibleUsers = React.useMemo(() => {
-    if (!assignedTeamMemberIds.length) return [];
+    if (!Array.isArray(assignedTeamMemberIds) || !assignedTeamMemberIds.length) return [];
     const allowed = new Set(assignedTeamMemberIds);
     return (allUsers || []).filter(u => allowed.has(normalize(u?.id || u?._id)));
   }, [allUsers, assignedTeamMemberIds]);
 
   useEffect(() => {
     if (!teamId) return;
+    if (!Array.isArray(assignedTeamMemberIds)) return;
     if (assignedTeamMemberIds.length === 0) {
       setAssignees([]);
     } else {
@@ -117,7 +122,7 @@ const CreateTaskModal = ({ createTask }) => {
     setError(null);
 
     if (!title.trim() || !teamId) {
-      setError('Task title and Project are required.');
+      setError(isProjectLocked ? 'Task title is required.' : 'Task title and Project are required.');
       setLoading(false);
       return { success: false };
     }
@@ -145,6 +150,8 @@ const CreateTaskModal = ({ createTask }) => {
   };
 
   const isLoading = loading || projectsLoading || usersLoading;
+  const isTeamLoading = !!teamId && !isAdmin && myTeamsLoading;
+  const hasNoAssignedTeam = !!teamId && Array.isArray(assignedTeamMemberIds) && assignedTeamMemberIds.length === 0;
 
   const priorityOptions = [
     { value: 'Low', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
@@ -172,12 +179,13 @@ const CreateTaskModal = ({ createTask }) => {
           autoFocus
         />
 
-        {/* Project Select - Required */}
-        <ProjectSelect
-          projects={selectableProjects}
-          value={teamId}
-          onChange={setTeamId}
-        />
+        {!isProjectLocked && (
+          <ProjectSelect
+            projects={selectableProjects}
+            value={teamId}
+            onChange={setTeamId}
+          />
+        )}
 
         {/* Quick Options Row */}
         <div className="flex flex-wrap items-center gap-2">
@@ -228,8 +236,14 @@ const CreateTaskModal = ({ createTask }) => {
                 users={eligibleUsers}
                 values={assignees}
                 onChange={setAssignees}
-                disabled={!!teamId && assignedTeamMemberIds.length === 0}
-                placeholder={!!teamId && assignedTeamMemberIds.length === 0 ? 'No team assigned to this project' : 'Assign users...'}
+                disabled={isTeamLoading || hasNoAssignedTeam}
+                placeholder={
+                  isTeamLoading
+                    ? 'Loading team...'
+                    : hasNoAssignedTeam
+                      ? 'No team assigned to this project'
+                      : 'Assign users...'
+                }
               />
             </div>
           </div>

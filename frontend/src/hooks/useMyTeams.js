@@ -6,6 +6,7 @@ export const useMyTeams = () => {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
     const fetch = async () => {
@@ -22,11 +23,16 @@ export const useMyTeams = () => {
       }
     };
 
+    if (!token) {
+      setTeams([]);
+      setLoading(false);
+      return;
+    }
+
     fetch();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     if (!token) return;
 
     let scheduled = null;
@@ -64,7 +70,7 @@ export const useMyTeams = () => {
       if (scheduled) clearTimeout(scheduled);
       unsubscribe?.();
     };
-  }, []);
+  }, [token]);
 
   return { teams, loading, error };
 };

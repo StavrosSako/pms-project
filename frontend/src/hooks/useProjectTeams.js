@@ -109,9 +109,10 @@ export const useProjectTeams = () => {
         }
 
         const currentMemberIds = currentIds.filter(uid => uid !== currentLeaderId);
+        const existingIds = new Set([...currentMemberIds, currentLeaderId].filter(Boolean));
 
-        const toAdd = desiredMembers.filter(uid => !currentMemberIds.includes(uid));
-        const toRemove = currentMemberIds.filter(uid => !desiredMembers.includes(uid));
+        const toAdd = desiredMembers.filter(uid => !existingIds.has(uid));
+        const toRemove = currentMemberIds.filter(uid => uid !== desiredLeader && !desiredMembers.includes(uid));
 
         for (const uid of toAdd) {
           current = await teamService.addProjectTeamMember(id, uid);

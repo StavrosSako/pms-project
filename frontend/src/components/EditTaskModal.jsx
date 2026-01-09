@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, Calendar, Users } from 'lucide-react';
 import { Modal } from '../components/Modal.jsx';
 import { useModal } from '../hooks/useModal.jsx';
-import { useProjects } from '../hooks/useProjects.js';
 import { useTeam } from '../hooks/useTeam.js';
-import ProjectSelect from '../components/ProjectSelect';
 import { UserMultiSelect } from '../components/UserPicker';
 
 const getTaskId = (task) => task?.id || task?._id;
@@ -13,7 +11,6 @@ const EditTaskModal = ({ updateTask, deleteTask }) => {
   const { modalProps, closeModal } = useModal();
   const task = modalProps.task;
 
-  const { projects, loading: projectsLoading } = useProjects();
   const { members: allUsers, loading: usersLoading } = useTeam();
 
   const taskId = useMemo(() => getTaskId(task), [task]);
@@ -44,8 +41,8 @@ const EditTaskModal = ({ updateTask, deleteTask }) => {
     setLoading(true);
     setError(null);
 
-    if (!title.trim() || !teamId) {
-      setError('Task title and Project are required.');
+    if (!title.trim()) {
+      setError('Task title is required.');
       setLoading(false);
       return { success: false };
     }
@@ -92,7 +89,7 @@ const EditTaskModal = ({ updateTask, deleteTask }) => {
     closeModal();
   };
 
-  const isLoading = loading || projectsLoading || usersLoading;
+  const isLoading = loading;
 
   const priorityOptions = [
     { value: 'Low', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
@@ -117,12 +114,6 @@ const EditTaskModal = ({ updateTask, deleteTask }) => {
           onChange={(e) => setTitle(e.target.value)}
           className="w-full text-lg font-medium bg-transparent border-none outline-none placeholder-gray-400 dark:placeholder-gray-500 text-gray-800 dark:text-white"
           autoFocus
-        />
-
-        <ProjectSelect
-          projects={projects}
-          value={teamId}
-          onChange={setTeamId}
         />
 
         <div className="flex flex-wrap items-center gap-2">
@@ -171,7 +162,8 @@ const EditTaskModal = ({ updateTask, deleteTask }) => {
                 users={allUsers}
                 values={assignees}
                 onChange={setAssignees}
-                placeholder="Assign users..."
+                disabled={usersLoading}
+                placeholder={usersLoading ? 'Loading users...' : 'Assign users...'}
               />
             </div>
           </div>

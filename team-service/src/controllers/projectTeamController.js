@@ -273,12 +273,12 @@ export const setProjectTeamLeader = async (req, res) => {
 
     const normalized = normalizeUserId(userId);
 
-    const member = team.members.find(m => normalizeUserId(m.userId) === normalized);
-    if (!member) {
-      return res.status(404).json({ message: 'User is not a member of this team' });
+    const exists = (team.members || []).some(m => normalizeUserId(m.userId) === normalized);
+    if (!exists) {
+      team.members.push({ userId: normalized, role: 'TEAM_MEMBER', joinedAt: new Date() });
     }
 
-    team.members = team.members.map(m => ({
+    team.members = (team.members || []).map(m => ({
       ...m.toObject(),
       role: normalizeUserId(m.userId) === normalized ? 'TEAM_LEADER' : 'TEAM_MEMBER'
     }));
