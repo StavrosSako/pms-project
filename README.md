@@ -161,33 +161,3 @@ cd task-service && npm start
 cd frontend && npm run dev
 ```
 
-## Troubleshooting
-
-### Frontend shows no projects
-
-Check:
-- The logged-in user is a member of a `project team` assigned to a project.
-- `team-service` SSE stream is connected:
-  - `http://localhost:8082/api/notifications/stream`
-- `useMyTeams()` is returning data from:
-  - `GET /api/project-teams/mine`
-
-### Task creation/update forbidden for TEAM_LEADER
-
-Check:
-- The user is a `TEAM_LEADER` for the selected project team.
-- Task service can reach team service:
-  - inside docker network: `http://team-service:8082`
-
-### SSE not updating
-
-Check:
-- Browser DevTools Network tab has an open (pending) SSE request.
-- JWT is present in localStorage and is attached as `Authorization: Bearer ...`.
-
-## Documentation
-
-- Full deep documentation (beginner-friendly + professional deep dive):
-  - `DOCUMENTATION.md`
-
-
